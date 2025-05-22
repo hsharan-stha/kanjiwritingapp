@@ -100,7 +100,7 @@
     <div id="viewer"></div>
 
     <div id="prev" class="arrow hidden">‹</div>
-    <div id="next" class="arrow hidden" >›</div>
+    <div id="next" class="arrow hidden">›</div>
 
     <!-- Hover Zone (small invisible strip on left edge) -->
     <div
@@ -113,22 +113,51 @@
       id="sidebar"
       class="fixed top-0 left-0 h-full w-64 bg-white p-4 shadow-lg transform -translate-x-full transition-transform duration-300 z-[1001] space-y-4 overflow-auto"
     >
-      <!-- Your sidebar content here -->
-      <div class="font-controls flex justify-between">
-        <button
-          onclick="changeFontSize(10)"
-          class="bg-blue-500 text-white px-2 py-1 rounded"
-        >
-          A+
-        </button>
-        <button
-          onclick="changeFontSize(-10)"
-          class="bg-blue-500 text-white px-2 py-1 rounded"
-        >
-          A-
-        </button>
-      </div>
+     <div class="space-y-6">
+  <!-- Font Controls -->
+  <div class="flex items-center justify-between">
+    <span class="text-gray-700 font-semibold">Font Size</span>
+    <div class="flex gap-2">
+      <button
+        onclick="changeFontSize(10)"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
+        title="Increase Font Size"
+      >
+        A+
+      </button>
+      <button
+        onclick="changeFontSize(-10)"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
+        title="Decrease Font Size"
+      >
+        A-
+      </button>
+    </div>
+  </div>
+
+  <!-- Flow Mode Toggle -->
+  <div>
+    <span class="text-gray-700 font-semibold">Flow Mode</span>
+    <div class="mt-2 flex gap-3">
+      <label
+        class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-2 py-2 rounded-lg cursor-pointer transition shadow"
+      >
+        <input type="radio" name="flowMode" value="scrolled" class="accent-blue-600" />
+        <span>Scrolled</span>
+      </label>
+      <label
+        class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-2 py-2 rounded-lg cursor-pointer transition shadow"
+      >
+        <input type="radio" name="flowMode" value="paginated" class="accent-blue-600" />
+        <span>Paginated</span>
+      </label>
+    </div>
+  </div>
+</div>
+<div class="mt-6">
+  <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">📘 Table of Contents</h3>
       <ul id="toc" class="text-sm space-y-2 max-h-[80vh] overflow-auto"></ul>
+      </div>
     </div>
 
     <!-- Sidebar Overlay -->
@@ -146,9 +175,14 @@
     </div>
 
     <script>
+      var flowMode = document.querySelectorAll(
+        `input[value="${localStorage.getItem("flow")}"]`
+      );
+      flowMode[0]?.setAttribute("checked", true);
+      console.log(flowMode);
       var book = ePub("http://192.168.10.12/kanji-prac/epub/sample.epub");
       const rendition = book.renderTo("viewer", {
-        flow: "paginated",
+        flow: localStorage.getItem("flow") || "paginated",
         width: "100%",
         height: "100%",
         spread: "none",
@@ -170,9 +204,15 @@
         }
       }
 
-      rendition.display();
-
       book.ready.then(() => {
+        const saved = localStorage.getItem("epub-location");
+
+        if (saved) {
+          rendition.display(saved);
+        } else {
+          rendition.display();
+        }
+
         document
           .getElementById("next")
           .addEventListener("click", () => rendition.next());
@@ -187,6 +227,8 @@
       });
 
       rendition.on("relocated", function (location) {
+        localStorage.setItem("epub-location", location.end.cfi);
+
         const page = location?.start?.displayed?.page || 0;
         const total = location?.start?.displayed?.total || 0;
         const index = location?.start?.index + 1 || 1;
@@ -328,15 +370,18 @@
               console.log("Swiped left");
               rendition.next();
             }
-          } else {
-            if (dy > 50) {
-              console.log("Swiped down");
-            } else if (dy < -50) {
-              console.log("Swiped up");
-            }
           }
         }
       }
+
+      // Handle radio button changes
+      document.querySelectorAll('input[name="flowMode"]').forEach((radio) => {
+        radio.addEventListener("change", (event) => {
+          const selectedFlow = event.target.value;
+          localStorage.setItem("flow", selectedFlow);
+          window.location.reload();
+        });
+      });
     </script>
   </body>
 </html>
