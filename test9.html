@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Red Draw on Plus Sign</title>
+  <style>
+    body {
+      background: black;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      border: 1px solid white;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="400"></canvas>
+
+<script>
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const bgColor = "white";
+  const plusColor = "black";
+  const drawColor = "red";
+
+  let isDrawing = false;
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+
+  function drawBackground() {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function drawPlusSign() {
+    const armLength = 100;
+    const thickness = 30;
+
+    ctx.fillStyle = plusColor;
+    // Vertical arm
+    ctx.fillRect(centerX - thickness / 2, centerY - armLength / 2, thickness, armLength);
+    // Horizontal arm
+    ctx.fillRect(centerX - armLength / 2, centerY - thickness / 2, armLength, thickness);
+  }
+
+  function drawRedDot(x, y) {
+    ctx.fillStyle = "red";
+    ctx.fillRect(x, y, 1, 1);
+  }
+
+  function getDistanceToWhite(x, y, direction) {
+    let distance = 0;
+    let dx = x, dy = y;
+
+    while (true) {
+      if (direction === "up") dy = y - distance;
+      if (direction === "down") dy = y + distance;
+      if (direction === "left") dx = x - distance;
+      if (direction === "right") dx = x + distance;
+
+      if (dx < 0 || dy < 0 || dx >= canvas.width || dy >= canvas.height) break;
+
+      const pixel = ctx.getImageData(dx, dy, 1, 1).data;
+      const [r, g, b] = pixel;
+
+      if (r === 255 && g === 255 && b === 255) break; // stop at white
+
+      distance++;
+    }
+
+    return distance;
+  }
+
+  function initCanvas() {
+    drawBackground();
+    drawPlusSign();
+  }
+
+  initCanvas();
+
+  // Drawing
+  canvas.addEventListener("mousedown", () => {
+    isDrawing = true;
+  });
+
+  canvas.addEventListener("mouseup", () => {
+    isDrawing = false;
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (isDrawing) {
+      ctx.fillStyle = drawColor;
+      ctx.fillRect(e.offsetX, e.offsetY, 2, 2); // small red brush
+    }
+  });
+
+  // Click to measure distances
+  canvas.addEventListener("click", (e) => {
+    if (isDrawing) return;
+
+    const x = e.offsetX;
+    const y = e.offsetY;
+
+    drawRedDot(x, y);
+
+    const up = getDistanceToWhite(x, y, "up");
+    const down = getDistanceToWhite(x, y, "down");
+    const left = getDistanceToWhite(x, y, "left");
+    const right = getDistanceToWhite(x, y, "right");
+
+    console.clear();
+    console.log(`Clicked at (${x}, ${y})`);
+    console.log(`Up: ${up}px`);
+    console.log(`Down: ${down}px`);
+    console.log(`Left: ${left}px`);
+    console.log(`Right: ${right}px`);
+  });
+</script>
+</body>
+</html>

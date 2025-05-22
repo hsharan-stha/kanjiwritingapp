@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Erase and Crop Image</title>
+  <style>
+    #canvas {
+      border: 1px solid #000;
+    }
+    #preview {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Erase and Crop Image</h2>
+
+  <!-- Image upload input -->
+  <input type="file" id="uploadImage" accept="image/*" />
+  <input type="type" id="sizeEraser" value="5"/>
+
+  <br>
+  <!-- Canvas for drawing and erasing -->
+  <canvas id="canvas"></canvas>
+  <br>
+  <!-- Button to save the cropped image -->
+  <button id="saveBtn">Save Cropped Image</button>
+  <button id="resetBtn">Reset Image</button>
+  
+  <div id="preview">
+    <h3>Cropped Image Preview:</h3>
+    <img id="croppedImage" src="" alt="Cropped Image" />
+  </div>
+
+  <script>
+    const uploadImage = document.getElementById("uploadImage");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const saveBtn = document.getElementById("saveBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const croppedImage = document.getElementById("croppedImage");
+    
+    let img = new Image();
+    
+    let isImageLoaded = false;
+    let drawing = false;
+    let eraseMode = true;  // Start in erase mode
+    let lastX = 0;
+    let lastY = 0;
+
+    // Backup canvas for original image
+    const backupCanvas = document.createElement("canvas");
+    const backupCtx = backupCanvas.getContext("2d");
+
+    // Load the image on file input change
+    uploadImage.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Draw the image on the canvas when loaded
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      backupCanvas.width = img.width; // Set backup canvas size
+      backupCanvas.height = img.height;
+
+      // Draw the image on both the main canvas and the backup canvas
+      ctx.drawImage(img, 0, 0);
+      backupCtx.drawImage(img, 0, 0); // Backup the original image
+      isImageLoaded = true;
+    };
+
+    // Mouse events for erasing parts of the image
+    canvas.addEventListener("mousedown", (e) => {
+      if (isImageLoaded) {
+        drawing = true;
+        lastX = e.offsetX;
+        lastY = e.offsetY;
+      }
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (drawing && eraseMode) {
+        const currentX = e.offsetX;
+        const currentY = e.offsetY;
+        
+        // Erase the part of the image
+        ctx.globalCompositeOperation = 'source-over'; // This makes the drawing transparent
+        ctx.lineWidth = document.getElementById("sizeEraser").value;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'white';
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(currentX, currentY);
+        ctx.stroke();
+        
+        lastX = currentX;
+        lastY = currentY;
+      }
+    });
+
+    canvas.addEventListener("mouseup", () => {
+      drawing = false;
+    });
+
+    // Save the cropped image after erasing
+    saveBtn.addEventListener("click", () => {
+      if (isImageLoaded) {
+        const croppedImageUrl = canvas.toDataURL();
+        croppedImage.src = croppedImageUrl;
+
+        // Save the image (you can implement saving to file or further processing here)
+        const link = document.createElement("a");
+        link.href = croppedImageUrl;
+        link.download = "cropped-image.png";
+        link.click();
+      }
+    });
+
+    // Reset to the original image from the backup
+    resetBtn.addEventListener("click", () => {
+      if (isImageLoaded) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+        ctx.drawImage(backupCanvas, 0, 0); // Draw the backup image
+      }
+    });
+  </script>
+
+</body>
+</html>

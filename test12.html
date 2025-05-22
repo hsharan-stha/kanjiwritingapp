@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Mobile Book Reader</title>
+  <style>
+    /* Base Styles */
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --bg-light: #ffffff;
+      --bg-dark: #1e293b;
+      --text-light: #334155;
+      --text-dark: #e2e8f0;
+      --sepia-bg: #f5e8d0;
+      --sepia-text: #5c4a30;
+      --menu-width: 280px;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg-light);
+      color: var(--text-light);
+      height: 100vh;
+      overflow: hidden;
+      touch-action: pan-y;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    
+    body.dark {
+      background: var(--bg-dark);
+      color: var(--text-dark);
+    }
+    
+    body.sepia {
+      background: var(--sepia-bg);
+      color: var(--sepia-text);
+    }
+    
+    /* App Container */
+    #app {
+      display: flex;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Hamburger Menu */
+    .menu {
+      position: fixed;
+      top: 0;
+      left: calc(-1 * var(--menu-width));
+      width: var(--menu-width);
+      height: 100%;
+      background: var(--bg-light);
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: transform 0.3s ease;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    
+    body.dark .menu {
+      background: var(--bg-dark);
+    }
+    
+    body.sepia .menu {
+      background: var(--sepia-bg);
+    }
+    
+    .menu.open {
+      transform: translateX(var(--menu-width));
+    }
+    
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    body.dark .menu-header {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    body.sepia .menu-header {
+      border-bottom-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    .menu-title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    .close-menu {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    /* Menu Content */
+    .menu-section {
+      margin-bottom: 24px;
+    }
+    
+    .menu-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--primary);
+    }
+    
+    .menu-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    body.dark .menu-option {
+      border-bottom-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    body.sepia .menu-option {
+      border-bottom-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .menu-option-label {
+      font-size: 15px;
+    }
+    
+    .menu-option-control {
+      display: flex;
+      align-items: center;
+    }
+    
+    /* Reader Content */
+    .reader-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      transition: margin 0.3s ease;
+    }
+    
+    .reader-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--primary);
+      color: white;
+      z-index: 10;
+    }
+    
+    .menu-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    .book-title {
+      font-size: 18px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70%;
+    }
+    
+    .reader-content-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .reader-content-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      transition: transform 0.3s ease;
+    }
+    
+    .reader-page {
+      flex: 0 0 100%;
+      height: 100%;
+      padding: 20px 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+    }
+    
+    .reader-content {
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    
+    /* Progress Bar */
+    .progress-container {
+      padding: 0 16px 8px;
+      background: var(--primary);
+    }
+    
+    .progress-bar {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: white;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    /* Theme-specific styles */
+    .theme-light {
+      background: var(--bg-light);
+      color: var(--text-light);
+    }
+    
+    .theme-dark {
+      background: var(--bg-dark);
+      color: var(--text-dark);
+    }
+    
+    .theme-sepia {
+      background: var(--sepia-bg);
+      color: var(--sepia-text);
+    }
+    
+    /* Swipe hint */
+    .swipe-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(0, 0, 0, 0.5);
+      font-size: 14px;
+      pointer-events: none;
+      animation: fadeInOut 3s infinite;
+    }
+    
+    body.dark .swipe-hint {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    
+    body.sepia .swipe-hint {
+      color: rgba(0, 0, 0, 0.5);
+    }
+    
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      50% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    
+    /* Zoom overlay */
+    .zoom-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 200;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .zoom-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+    }
+    
+    body.dark .zoom-content {
+      background: var(--bg-dark);
+    }
+    
+    body.sepia .zoom-content {
+      background: var(--sepia-bg);
+    }
+    
+    /* Range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #ddd;
+      outline: none;
+    }
+    
+    body.dark input[type="range"] {
+      background: #555;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+    }
+    
+    /* Toggle switches */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    
+    body.dark .slider {
+      background-color: #555;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Hamburger Menu -->
+    <div class="menu" id="menu">
+      <div class="menu-header">
+        <div class="menu-title">Settings</div>
+        <button class="close-menu" id="close-menu">×</button>
+      </div>
+      
+      <div class="menu-section">
+        <div class="menu-section-title">Appearance</div>
+        
+        <div class="menu-option">
+          <div class="menu-option-label">Theme</div>
+          <div class="menu-option-control">
+            <select id="theme-select" class="menu-select">
+              <option value="light">Light</option>
+              <option value="sepia">Sepia</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="menu-option">
+          <div class="menu-option-label">Font Size</div>
+          <div class="menu-option-control">
+            <input type="range" id="font-size-slider" min="14" max="28" value="18">
+          </div>
+        </div>
+        
+        <div class="menu-option">
+          <div class="menu-option-label">Font Family</div>
+          <div class="menu-option-control">
+            <select id="font-family-select" class="menu-select">
+              <option value="sans-serif">Sans-serif</option>
+              <option value="serif">Serif</option>
+              <option value="monospace">Monospace</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="menu-option">
+          <div class="menu-option-label">Line Height</div>
+          <div class="menu-option-control">
+            <input type="range" id="line-height-slider" min="1.2" max="2.2" step="0.1" value="1.6">
+          </div>
+        </div>
+      </div>
+      
+      <div class="menu-section">
+        <div class="menu-section-title">Reading</div>
+        
+        <div class="menu-option">
+          <div class="menu-option-label">Swipe Navigation</div>
+          <div class="menu-option-control">
+            <label class="switch">
+              <input type="checkbox" id="swipe-toggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="menu-option">
+          <div class="menu-option-label">Tap to Paginate</div>
+          <div class="menu-option-control">
+            <label class="switch">
+              <input type="checkbox" id="tap-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="menu-section">
+        <div class="menu-section-title">Book</div>
+        
+        <button id="load-sample-btn" class="menu-option" style="cursor: pointer;">
+          <div class="menu-option-label">Load Sample Book</div>
+          <div class="menu-option-control">→</div>
+        </button>
+        
+        <!-- <button id="upload-book-btn" class="menu-option" style="cursor: pointer;">
+          <div class="menu-option-label">Upload Book</div>
+          <div class="menu-option-control">→</div>
+        </button> -->
+      </div>
+    </div>
+    
+    <!-- Reader View -->
+    <div class="reader-view" id="reader-view">
+      <div class="reader-header">
+        <button class="menu-btn" id="menu-btn">☰</button>
+        <div class="book-title" id="book-title">Book Reader</div>
+        <div style="width: 24px;"></div> <!-- Spacer -->
+      </div>
+      
+      <div class="reader-content-container" id="reader-content-container">
+        <div class="reader-content-wrapper" id="reader-content-wrapper">
+          <div class="reader-page">
+            <div class="reader-content" id="reader-content">
+              <div style="text-align: center; padding-top: 40px;">
+                <div style="font-size: 24px; margin-bottom: 20px;">📖</div>
+                <h2>No Book Loaded</h2>
+                <p style="margin-top: 16px; color: #64748b;">Open the menu to select a book</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Swipe Hint -->
+    <div class="swipe-hint" id="swipe-hint">Swipe left or right to turn pages</div>
+    
+    <!-- Zoom Overlay -->
+    <div class="zoom-overlay" id="zoom-overlay">
+      <div class="zoom-content" id="zoom-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const app = document.getElementById('app');
+    const menu = document.getElementById('menu');
+    const menuBtn = document.getElementById('menu-btn');
+    const closeMenu = document.getElementById('close-menu');
+    const readerView = document.getElementById('reader-view');
+    const readerContentContainer = document.getElementById('reader-content-container');
+    const readerContentWrapper = document.getElementById('reader-content-wrapper');
+    const readerContent = document.getElementById('reader-content');
+    const bookTitle = document.getElementById('book-title');
+    const progressFill = document.getElementById('progress-fill');
+    const swipeHint = document.getElementById('swipe-hint');
+    const zoomOverlay = document.getElementById('zoom-overlay');
+    const zoomContent = document.getElementById('zoom-content');
+    
+    // Menu controls
+    const themeSelect = document.getElementById('theme-select');
+    const fontSizeSlider = document.getElementById('font-size-slider');
+    const fontFamilySelect = document.getElementById('font-family-select');
+    const lineHeightSlider = document.getElementById('line-height-slider');
+    const swipeToggle = document.getElementById('swipe-toggle');
+    const tapToggle = document.getElementById('tap-toggle');
+    const loadSampleBtn = document.getElementById('load-sample-btn');
+    const uploadBookBtn = document.getElementById('upload-book-btn');
+    
+    // State
+    let currentPage = 0;
+    let totalPages = 0;
+    let bookContent = [];
+    let currentBook = null;
+    let isMenuOpen = false;
+    let currentFontSize = 18;
+    let currentLineHeight = 1.6;
+    let enableSwipe = true;
+    let enableTap = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let zoomedContent = null;
+    
+    // Sample Book Content
+    const sampleBook = {
+      title: "Sample Book",
+      content: []
+    };
+    
+    // Generate sample chapters with realistic text
+    const lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+    
+    for (let i = 1; i <= 20; i++) {
+      sampleBook.content.push(`
+        <h2>Chapter ${i}</h2>
+        <p>This is the beginning of chapter ${i}. The mobile book reader provides a comfortable reading experience with customizable settings to suit your preferences.</p>
+        <p>${lorem}</p>
+        <p>${lorem}</p>
+        <p>Page content continues here with more sample text to demonstrate how the reader handles longer passages and multiple paragraphs.</p>
+      `);
+    }
+    
+    // Initialize the app
+    function init() {
+      loadSettings();
+      setupEventListeners();
+      updateReaderStyles();
+      
+      // Hide swipe hint after 5 seconds
+      setTimeout(() => {
+        swipeHint.style.display = 'none';
+      }, 5000);
+    }
+    
+    // Set up event listeners
+    function setupEventListeners() {
+      // Menu controls
+      menuBtn.addEventListener('click', toggleMenu);
+      closeMenu.addEventListener('click', toggleMenu);
+      
+      // Theme selection
+      themeSelect.addEventListener('change', () => {
+        applyTheme(themeSelect.value);
+        localStorage.setItem('theme', themeSelect.value);
+      });
+      
+      // Font size
+      fontSizeSlider.addEventListener('input', () => {
+        currentFontSize = fontSizeSlider.value;
+        updateReaderStyles();
+        localStorage.setItem('fontSize', currentFontSize);
+      });
+      
+      // Font family
+      fontFamilySelect.addEventListener('change', () => {
+        updateReaderStyles();
+        localStorage.setItem('fontFamily', fontFamilySelect.value);
+      });
+      
+      // Line height
+      lineHeightSlider.addEventListener('input', () => {
+        currentLineHeight = lineHeightSlider.value;
+        updateReaderStyles();
+        localStorage.setItem('lineHeight', currentLineHeight);
+      });
+      
+      // Swipe toggle
+      swipeToggle.addEventListener('change', () => {
+        enableSwipe = swipeToggle.checked;
+        localStorage.setItem('enableSwipe', enableSwipe);
+      });
+      
+      // Tap toggle
+      tapToggle.addEventListener('change', () => {
+        enableTap = tapToggle.checked;
+        localStorage.setItem('enableTap', enableTap);
+        setupTapNavigation();
+      });
+      
+      // Load sample book
+      loadSampleBtn.addEventListener('click', () => {
+        loadBook(sampleBook);
+        toggleMenu();
+      });
+      
+      // Upload book
+      uploadBookBtn.addEventListener('click', () => {
+        uploadBook();
+        toggleMenu();
+      });
+      
+      // Touch events for swipe navigation
+      readerContentContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+      readerContentContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+      
+      // Double-tap to zoom
+      readerContentContainer.addEventListener('dblclick', handleDoubleTap);
+      
+      // Close zoom overlay
+      zoomOverlay.addEventListener('click', () => {
+        zoomOverlay.style.display = 'none';
+      });
+    }
+    
+    // Toggle menu
+    function toggleMenu() {
+      isMenuOpen = !isMenuOpen;
+      menu.classList.toggle('open', isMenuOpen);
+      
+      if (isMenuOpen) {
+        // Disable swipe navigation while menu is open
+        enableSwipe = false;
+      } else {
+        // Restore swipe navigation preference
+        enableSwipe = swipeToggle.checked;
+      }
+    }
+    
+    // Load book
+    function loadBook(book) {
+      currentBook = book;
+      bookContent = book.content;
+      totalPages = bookContent.length;
+      currentPage = 1;
+      
+      bookTitle.textContent = book.title;
+      
+      // Clear existing pages
+      readerContentWrapper.innerHTML = '';
+      
+      // Create pages
+      for (let i = 0; i < totalPages; i++) {
+        const page = document.createElement('div');
+        page.className = 'reader-page';
+        page.innerHTML = `<div class="reader-content">${bookContent[i]}</div>`;
+        readerContentWrapper.appendChild(page);
+      }
+      
+      // Set initial position
+      goToPage(currentPage);
+      updateUI();
+    }
+    
+    // Go to specific page
+    function goToPage(page) {
+      if (page < 1 || page > totalPages) return;
+      
+      currentPage = page;
+      const position = -(page - 1) * 100;
+      readerContentWrapper.style.transform = `translateX(${position}%)`;
+      
+      // Update progress
+      const progress = (page / totalPages) * 100;
+      progressFill.style.width = `${progress}%`;
+      
+      // Update styles for the current page
+      updateReaderStyles();
+    }
+    
+    // Navigation functions
+    function goToPreviousPage() {
+      if (currentPage > 1) {
+        goToPage(currentPage - 1);
+      }
+    }
+    
+    function goToNextPage() {
+      if (currentPage < totalPages) {
+        goToPage(currentPage + 1);
+      }
+    }
+    
+    // Update UI state
+    function updateUI() {
+      // Update all reader content styles
+      const pages = document.querySelectorAll('.reader-content');
+      pages.forEach(page => {
+        page.style.fontSize = `${currentFontSize}px`;
+        page.style.fontFamily = fontFamilySelect.value;
+        page.style.lineHeight = currentLineHeight;
+      });
+    }
+    
+    // Update reader styles based on settings
+    function updateReaderStyles() {
+      const pages = document.querySelectorAll('.reader-content');
+      if (pages.length > 0) {
+        pages.forEach(page => {
+          page.style.fontSize = `${currentFontSize}px`;
+          page.style.fontFamily = fontFamilySelect.value;
+          page.style.lineHeight = currentLineHeight;
+        });
+      } else {
+        readerContent.style.fontSize = `${currentFontSize}px`;
+        readerContent.style.fontFamily = fontFamilySelect.value;
+        readerContent.style.lineHeight = currentLineHeight;
+      }
+    }
+    
+    // Theme functions
+    function applyTheme(theme) {
+      document.body.className = '';
+      if (theme === 'dark') {
+        document.body.classList.add('dark');
+      } else if (theme === 'sepia') {
+        document.body.classList.add('sepia');
+      }
+    }
+    
+    // Load saved settings
+    function loadSettings() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      const savedFontSize = localStorage.getItem('fontSize') || 18;
+      const savedFontFamily = localStorage.getItem('fontFamily') || 'sans-serif';
+      const savedLineHeight = localStorage.getItem('lineHeight') || 1.6;
+      const savedSwipe = localStorage.getItem('enableSwipe') !== 'false';
+      const savedTap = localStorage.getItem('enableTap') === 'true';
+      
+      // Apply settings
+      themeSelect.value = savedTheme;
+      applyTheme(savedTheme);
+      
+      fontSizeSlider.value = savedFontSize;
+      currentFontSize = savedFontSize;
+      
+      fontFamilySelect.value = savedFontFamily;
+      
+      lineHeightSlider.value = savedLineHeight;
+      currentLineHeight = savedLineHeight;
+      
+      swipeToggle.checked = savedSwipe;
+      enableSwipe = savedSwipe;
+      
+      tapToggle.checked = savedTap;
+      enableTap = savedTap;
+      
+      if (enableTap) {
+        setupTapNavigation();
+      }
+    }
+    
+    // Book upload
+    function uploadBook() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.txt';
+      
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = e => {
+          const content = e.target.result;
+          const book = {
+            title: file.name.replace('.txt', ''),
+            content: splitContentIntoPages(content) // Split content into pages
+          };
+          loadBook(book);
+        };
+        reader.readAsText(file);
+      };
+      
+      input.click();
+    }
+    
+    // Split content into pages based on screen size
+    function splitContentIntoPages(content) {
+      const paragraphs = content.split('\n\n');
+      const pages = [];
+      let currentPageContent = '';
+      
+      // Create a temporary element to measure text height
+      const tempElement = document.createElement('div');
+      tempElement.className = 'reader-content';
+      tempElement.style.visibility = 'hidden';
+      tempElement.style.position = 'absolute';
+      tempElement.style.width = '100%';
+      document.body.appendChild(tempElement);
+      
+      // Apply current styles to temp element
+      tempElement.style.fontSize = `${currentFontSize}px`;
+      tempElement.style.fontFamily = fontFamilySelect.value;
+      tempElement.style.lineHeight = currentLineHeight;
+      
+      // Get container height
+      const containerHeight = readerContentContainer.offsetHeight - 40; // account for padding
+      
+      paragraphs.forEach(para => {
+        const prevContent = currentPageContent;
+        currentPageContent += `<p>${para}</p>`;
+        tempElement.innerHTML = currentPageContent;
+        
+        // If content exceeds container height, start new page
+        if (tempElement.offsetHeight > containerHeight) {
+          pages.push(prevContent);
+          currentPageContent = `<p>${para}</p>`;
+        }
+      });
+      
+      // Add the last page
+      if (currentPageContent) {
+        pages.push(currentPageContent);
+      }
+      
+      // Clean up
+      document.body.removeChild(tempElement);
+      
+      return pages;
+    }
+    
+    // Touch event handlers for swipe navigation
+    function handleTouchStart(e) {
+      if (!enableSwipe) return;
+      
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }
+    
+    function handleTouchEnd(e) {
+      if (!enableSwipe) return;
+      
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+      
+      handleSwipe();
+    }
+    
+    function handleSwipe() {
+      const threshold = 50;
+      const xDiff = touchStartX - touchEndX;
+      const yDiff = touchStartY - touchEndY;
+      
+      // Only consider horizontal swipes with minimal vertical movement
+      if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > threshold) {
+        if (xDiff > 0) {
+          goToNextPage(); // Swipe left
+        } else {
+          goToPreviousPage(); // Swipe right
+        }
+      }
+    }
+    
+    // Setup tap navigation
+    function setupTapNavigation() {
+      if (enableTap) {
+        readerContentContainer.style.cursor = 'pointer';
+        readerContentContainer.addEventListener('click', handleTap);
+      } else {
+        readerContentContainer.style.cursor = '';
+        readerContentContainer.removeEventListener('click', handleTap);
+      }
+    }
+    
+    function handleTap(e) {
+      if (!enableTap) return;
+      
+      const containerWidth = readerContentContainer.offsetWidth;
+      const tapPosition = e.clientX;
+      
+      if (tapPosition < containerWidth / 3) {
+        goToPreviousPage(); // Tap left third
+      } else if (tapPosition > (containerWidth / 3) * 2) {
+        goToNextPage(); // Tap right third
+      }
+      // Middle third does nothing (for selection)
+    }
+    
+    // Handle double tap to zoom
+    function handleDoubleTap(e) {
+      if (zoomedContent) {
+        zoomOverlay.style.display = 'none';
+        zoomedContent = null;
+        return;
+      }
+      
+      // Get the element that was double-tapped
+      let element = e.target;
+      
+      // Find the nearest paragraph or heading
+      while (element && !['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
+        element = element.parentElement;
+        if (element === readerContentContainer) break;
+      }
+      
+      if (element) {
+        zoomedContent = element.innerHTML;
+        zoomContent.innerHTML = zoomedContent;
+        zoomOverlay.style.display = 'flex';
+        
+        // Apply current styles to zoomed content
+        zoomContent.style.fontSize = `${currentFontSize + 8}px`;
+        zoomContent.style.fontFamily = fontFamilySelect.value;
+        zoomContent.style.lineHeight = currentLineHeight;
+      }
+    }
+    
+    // Initialize the app
+    init();
+  </script>
+</body>
+</html>

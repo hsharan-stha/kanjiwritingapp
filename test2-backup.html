@@ -1,0 +1,56 @@
+<script src="gif.js"></script>
+<script src="gif.worker.js"></script>
+<canvas id="drawCanvas" width="500" height="500" style="border:1px solid black;"></canvas>
+<button id="generateGifButton">Generate GIF</button>
+<script>
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+
+const scale = 10;     // Size of each pixel
+const offsetX = 100;  // Horizontal offset
+const offsetY = 100;  // Vertical offset
+
+const bCoords=
+
+
+let i = 0;
+const blocksPerFrame = 10; // Increase this number to speed up more
+
+ctx.fillStyle = '#2d2d2d';
+const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: drawCanvas.width,
+        height: drawCanvas.height
+      });
+function drawNextBlock() {
+  drawCanvas.fillStyle = 'white';
+
+  for (let j = 0; j < blocksPerFrame && i < bCoords.length; j++, i++) {
+    const { x, y } = bCoords[i];
+    ctx.fillRect(x, y, 10, 10);
+  }
+
+  if (i < bCoords.length) {
+    gif.addFrame(drawCanvas, {
+        copy: true,
+        delay: 0,
+      });
+    requestAnimationFrame(drawNextBlock); // Much more efficient
+  }
+}
+
+drawNextBlock();
+document.getElementById('generateGifButton').addEventListener('click', () => {
+  gif.render();
+
+      gif.on('finished', function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kanji_drawing.gif';
+        a.click();
+      });
+    });
+ 
+</script>

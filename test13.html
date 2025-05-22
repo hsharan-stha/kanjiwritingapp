@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="viewport"
+      content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>EPUB.js Pagination Example</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/detect_swipe/2.1.1/jquery.detect_swipe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="./epub.js"></script>
+    <link rel="stylesheet" type="text/css" href="./example.css" />
+
+    <style type="text/css">
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: white;
+      }
+
+      #viewer {
+        width: 100%;
+        height: 100%;
+        /* box-shadow: 0 0 1px #ccc; */
+        /* background: white; */
+        /* touch-action: none; Prevent default to improve swipe */
+      }
+
+      /* TOC (Table of Contents) at top-left */
+      #toc {
+        position: fixed;
+        top: 40px;
+        left: 10px;
+        z-index: 1000;
+        font-size: 14px;
+      }
+
+      /* Font controls at top-right */
+      .font-controls {
+        position: fixed;
+        top:40px;
+        right: 10px;
+        z-index: 1000;
+        display: flex;
+        gap: 4px;
+      }
+
+      .font-controls button {
+        font-size: 14px;
+        padding: 4px 8px;
+        border: none;
+        border-radius: 4px;
+        /* background: #333; */
+        color: 333;
+        cursor: pointer;
+      }
+
+      .arrow {
+        cursor: pointer;
+        font-size: 2em;
+        position: fixed;
+        top: 100%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        /* background: rgba(0, 0, 0, 0.2); */
+        color: #333;
+        padding: 5px;
+      }
+
+      #prev {
+        left: 10px;
+        display: none;
+      }
+
+      #next {
+        right: 10px;
+        display: none;
+      }
+
+      /* Page number display at bottom-center */
+      #page-info {
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        /* background: rgba(0, 0, 0, 0.7); */
+        color: black;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-family: sans-serif;
+        z-index: 1000;
+        font-size: 14px;
+      }
+
+      .hidden-ui #prev,
+      .hidden-ui #next,
+      .hidden-ui #toc,
+      .hidden-ui .font-controls,
+      .hidden-ui #page-info {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer"></div>
+    <div id="prev" class="arrow">‹</div>
+    <div id="next" class="arrow">›</div>
+
+    <select id="toc"></select>
+    <div class="font-controls">
+         <input type="range" onchange="fontSizeRange(event.target.value)" id="fontRange" min="50" max="500" value="16">
+      <!-- <button onclick="increaseFont()">A+</button>
+      <button onclick="decreaseFont()">A-</button> -->
+    </div>
+
+    <div id="page-info">
+      <span id="page-number"></span>
+    </div>
+
+    <div
+      id="image-viewer"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      "
+    >
+      <span
+        id="close-viewer"
+        style="
+          position: absolute;
+          top: 40px;
+          right: 20px;
+          font-size: 2rem;
+          color: white;
+          cursor: pointer;
+        "
+        >&times;</span
+      >
+      <img id="fullscreen-img" style="max-width: 95%; max-height: 90%" />
+    </div>
+
+    <script>
+      var book = ePub("http://192.168.10.12/kanji-prac/epub/sample.epub");
+      var rendition = book.renderTo("viewer", {
+        flow: "paginated",
+        width: "100%",
+        height: "100%",
+        spread: "none",
+      });
+
+      let currentFontSize = 100;
+
+      function fontSizeRange(range){
+        rendition.themes.fontSize(range + "%");
+      }
+
+      function increaseFont() {
+        const currentLocation = rendition.currentLocation(); // Save current location
+        if (currentFontSize < 500) {
+          currentFontSize += 10;
+          rendition.themes.fontSize(currentFontSize + "%");
+          if (
+            currentLocation &&
+            currentLocation.start &&
+            currentLocation.start.cfi
+          ) {
+            rendition.display(currentLocation.start.cfi); // Reload same page
+          }
+        }
+      }
+
+      function decreaseFont() {
+        const currentLocation = rendition.currentLocation(); // Save current location
+        if (currentFontSize > 50) {
+          currentFontSize -= 10;
+          rendition.themes.fontSize(currentFontSize + "%");
+          if (
+            currentLocation &&
+            currentLocation.start &&
+            currentLocation.start.cfi
+          ) {
+            rendition.display(currentLocation.start.cfi); // Reload same page
+          }
+        }
+      }
+
+      const saved = localStorage.getItem("epub-location");
+
+    //   if(saved){
+    //   rendition.display(saved); 
+    //   }else{
+      rendition.display(); 
+    //   }
+
+      book.ready.then(() => {
+        var next = document.getElementById("next");
+
+        next.addEventListener(
+          "click",
+          function (e) {
+            book.package.metadata.direction === "rtl"
+              ? rendition.prev()
+              : rendition.next();
+            e.preventDefault();
+          },
+          false
+        );
+
+        var prev = document.getElementById("prev");
+        prev.addEventListener(
+          "click",
+          function (e) {
+            book.package.metadata.direction === "rtl"
+              ? rendition.next()
+              : rendition.prev();
+            e.preventDefault();
+          },
+          false
+        );
+
+        var keyListener = function (e) {
+          // Left Key
+          if ((e.keyCode || e.which) == 37) {
+            book.package.metadata.direction === "rtl"
+              ? rendition.next()
+              : rendition.prev();
+          }
+
+          // Right Key
+          if ((e.keyCode || e.which) == 39) {
+            book.package.metadata.direction === "rtl"
+              ? rendition.prev()
+              : rendition.next();
+          }
+        };
+
+        rendition.on("keyup", keyListener);
+        document.addEventListener("keyup", keyListener, false);
+      });
+
+      var title = document.getElementById("title");
+
+      rendition.on("rendered", function (section) {
+        var current = book.navigation && book.navigation.get(section.href);
+        swipeEvent(
+          document.getElementsByTagName("iframe")[0].contentWindow.document,
+          rendition
+        );
+        if (current) {
+          var $select = document.getElementById("toc");
+          var $selected = $select.querySelector("option[selected]");
+          if ($selected) {
+            $selected.removeAttribute("selected");
+          }
+
+          var $options = $select.querySelectorAll("option");
+          for (var i = 0; i < $options.length; ++i) {
+            let selected = $options[i].getAttribute("ref") === current.href;
+            if (selected) {
+              $options[i].setAttribute("selected", "");
+            }
+          }
+        }
+      });
+
+      rendition.on("relocated", function (location) {
+        document.getElementById(
+          "page-number"
+        ).innerHTML = `Page ${location?.start?.displayed?.page} / ${location?.end?.displayed?.total}`;
+
+        var next =
+          book.package.metadata.direction === "rtl"
+            ? document.getElementById("prev")
+            : document.getElementById("next");
+        var prev =
+          book.package.metadata.direction === "rtl"
+            ? document.getElementById("next")
+            : document.getElementById("prev");
+
+        if (location.atEnd) {
+          next.style.visibility = "hidden";
+        } else {
+          next.style.visibility = "visible";
+        }
+
+        if (location.atStart) {
+          prev.style.visibility = "hidden";
+        } else {
+          prev.style.visibility = "visible";
+        }
+
+        console.log(book.navigation,location.end)
+         localStorage.setItem("epub-location", location.end.cfi);
+      });
+
+      rendition.on("layout", function (layout) {
+        let viewer = document.getElementById("viewer");
+
+        if (layout.spread) {
+          viewer.classList.remove("single");
+        } else {
+          viewer.classList.add("single");
+        }
+      });
+
+      window.addEventListener("unload", function () {
+        console.log("unloading");
+        this.book.destroy();
+      });
+
+      book.loaded.navigation.then(function (toc) {
+        var $select = document.getElementById("toc"),
+          docfrag = document.createDocumentFragment();
+
+        toc.forEach(function (chapter) {
+          var option = document.createElement("option");
+          option.textContent = chapter.label;
+          option.setAttribute("ref", chapter.href);
+
+          docfrag.appendChild(option);
+        });
+
+        $select.appendChild(docfrag);
+
+        $select.onchange = function () {
+          var index = $select.selectedIndex,
+            url = $select.options[index].getAttribute("ref");
+          rendition.display(url);
+          return false;
+        };
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document.body.addEventListener("click", function (event) {
+          if (event.target.id == "close-viewer") {
+            const viewer = document.getElementById("image-viewer");
+            viewer.style.display = "none";
+            return;
+          }
+
+          document.body.classList.toggle("hidden-ui");
+        });
+
+        // Optional: prevent UI from hiding when clicking on UI elements
+        const uiElements = [
+          "prev",
+          "next",
+          "toc",
+          "page-info",
+          "font-controls",
+        ];
+        uiElements.forEach((id) => {
+          const el =
+            document.getElementById(id) || document.querySelector(`.${id}`);
+          if (el) {
+            el.addEventListener("click", (e) => e.stopPropagation());
+          }
+        });
+      });
+
+      rendition.on("click", () => {
+        const target = event.target;
+
+        if (target.tagName === "IMG") {
+          const viewer = document.getElementById("image-viewer");
+          const img = document.getElementById("fullscreen-img");
+          img.src = target.src;
+          viewer.style.display = "flex";
+          return;
+        }
+
+        document.body.classList.toggle("hidden-ui");
+
+        ["#prev", "#next", "#toc", ".font-controls", "#page-info"].forEach(
+          (selector) => {
+            const el = document.querySelector(selector);
+            if (el) {
+              el.addEventListener("click", (e) => e.stopPropagation());
+            }
+          }
+        );
+
+      });
+    </script>
+  </body>
+  <script>
+    function swipeEvent(body, rendition) {
+      let touchstartX = 0;
+      let touchstartY = 0;
+      let touchendX = 0;
+      let touchendY = 0;
+
+      body?.addEventListener(
+        "touchstart",
+        function (event) {
+          touchstartX = event.changedTouches[0].screenX;
+          touchstartY = event.changedTouches[0].screenY;
+        },
+        { passive: true }
+      );
+
+      body?.addEventListener(
+        "touchend",
+        function (event) {
+          touchendX = event.changedTouches[0].screenX;
+          touchendY = event.changedTouches[0].screenY;
+          handleGesture();
+        },
+        { passive: true }
+      );
+
+      function handleGesture() {
+        const dx = touchendX - touchstartX;
+        const dy = touchendY - touchstartY;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 50) {
+            console.log("Swiped right");
+            rendition.prev();
+          } else if (dx < -50) {
+            console.log("Swiped left");
+            rendition.next();
+          }
+        } else {
+          if (dy > 50) {
+            console.log("Swiped down");
+          } else if (dy < -50) {
+            console.log("Swiped up");
+          }
+        }
+      }
+    }
+  </script>
+</html>

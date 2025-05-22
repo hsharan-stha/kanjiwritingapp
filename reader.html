@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Book Reader</title>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/detect_swipe/2.1.1/jquery.detect_swipe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="./epub.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" type="text/css" href="./example.css" />
+
+    <style>
+      body {
+        margin: 0;
+        padding: 50px 0px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background-color: #fff;
+      }
+
+      #viewer {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+      }
+
+      .arrow {
+        position: fixed;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 2rem;
+        background: rgba(255, 255, 255, 0.6);
+        padding: 0.5rem 1rem;
+        z-index: 1000;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #prev {
+        left: 10px;
+      }
+
+      #next {
+        right: 10px;
+      }
+
+      #page-info {
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.7);
+        padding: 6px 12px;
+        border-radius: 6px;
+        z-index: 1000;
+        font-size: 14px;
+      }
+
+      #image-viewer {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.95);
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      #fullscreen-img {
+        max-width: 95%;
+        max-height: 90%;
+      }
+
+      #close-viewer {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 2rem;
+        color: white;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="viewer"></div>
+
+    <div id="prev" class="arrow hidden">‹</div>
+    <div id="next" class="arrow hidden" >›</div>
+
+    <!-- Hover Zone (small invisible strip on left edge) -->
+    <div
+      id="hover-zone"
+      class="fixed top-0 left-0 h-full w-5 z-[1002] cursor-pointer"
+    ></div>
+
+    <!-- Sidebar -->
+    <div
+      id="sidebar"
+      class="fixed top-0 left-0 h-full w-64 bg-white p-4 shadow-lg transform -translate-x-full transition-transform duration-300 z-[1001] space-y-4 overflow-auto"
+    >
+      <!-- Your sidebar content here -->
+      <div class="font-controls flex justify-between">
+        <button
+          onclick="changeFontSize(10)"
+          class="bg-blue-500 text-white px-2 py-1 rounded"
+        >
+          A+
+        </button>
+        <button
+          onclick="changeFontSize(-10)"
+          class="bg-blue-500 text-white px-2 py-1 rounded"
+        >
+          A-
+        </button>
+      </div>
+      <ul id="toc" class="text-sm space-y-2 max-h-[80vh] overflow-auto"></ul>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div
+      id="sidebar-overlay"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 z-[1000]"
+    ></div>
+
+    <div id="page-info"><span id="page-number"></span></div>
+
+    <!-- Fullscreen Image Viewer -->
+    <div id="image-viewer">
+      <span id="close-viewer">&times;</span>
+      <img id="fullscreen-img" />
+    </div>
+
+    <script>
+      var book = ePub("http://192.168.10.12/kanji-prac/epub/sample.epub");
+      const rendition = book.renderTo("viewer", {
+        flow: "paginated",
+        width: "100%",
+        height: "100%",
+        spread: "none",
+      });
+
+      let currentFontSize = 100;
+
+      function changeFontSize(delta) {
+        if (
+          (delta > 0 && currentFontSize < 500) ||
+          (delta < 0 && currentFontSize > 50)
+        ) {
+          currentFontSize += delta;
+          const loc = rendition.currentLocation();
+          rendition.themes.fontSize(currentFontSize + "%");
+          if (loc && loc.start && loc.start.cfi) {
+            rendition.display(loc.start.cfi);
+          }
+        }
+      }
+
+      rendition.display();
+
+      book.ready.then(() => {
+        document
+          .getElementById("next")
+          .addEventListener("click", () => rendition.next());
+        document
+          .getElementById("prev")
+          .addEventListener("click", () => rendition.prev());
+
+        document.addEventListener("keyup", (e) => {
+          if (e.key === "ArrowRight") rendition.next();
+          if (e.key === "ArrowLeft") rendition.prev();
+        });
+      });
+
+      rendition.on("relocated", function (location) {
+        const page = location?.start?.displayed?.page || 0;
+        const total = location?.start?.displayed?.total || 0;
+        const index = location?.start?.index + 1 || 1;
+
+        document.getElementById(
+          "page-number"
+        ).textContent = `page ${page} / ${total} of chapter ${index}`;
+        document.getElementById("prev").style.visibility = location.atStart
+          ? "hidden"
+          : "visible";
+        document.getElementById("next").style.visibility = location.atEnd
+          ? "hidden"
+          : "visible";
+      });
+
+      book.loaded.navigation.then(function (toc) {
+        const tocList = document.getElementById("toc");
+        toc.forEach(function (chapter) {
+          const li = document.createElement("li");
+          li.className = "hover:bg-gray-100 p-2 rounded cursor-pointer";
+          li.textContent = chapter.label;
+          li.setAttribute("data-href", chapter.href);
+          li.onclick = () => {
+            rendition.display(chapter.href);
+          };
+          tocList.appendChild(li);
+        });
+      });
+
+      rendition.on("rendered", function (section) {
+        const iframe = document.querySelector("#viewer iframe");
+        swipeEvent(iframe.contentWindow.document, rendition);
+        if (iframe && iframe.contentDocument) {
+          iframe.contentDocument.body.addEventListener(
+            "click",
+            function (event) {
+              const target = event.target;
+              if (target.tagName === "IMG") {
+                const src = target.getAttribute("src");
+                if (src) {
+                  const viewer = document.getElementById("image-viewer");
+                  document.getElementById("fullscreen-img").src = src;
+                  viewer.style.display = "flex";
+                }
+              }
+            }
+          );
+        }
+      });
+
+      document.getElementById("close-viewer").addEventListener("click", () => {
+        document.getElementById("image-viewer").style.display = "none";
+      });
+
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("sidebar-overlay");
+      const hoverZone = document.getElementById("hover-zone");
+
+      // Open sidebar on hover over left edge (hoverZone)
+      hoverZone.addEventListener("click", () => {
+        sidebar.classList.remove("-translate-x-full");
+        overlay.classList.remove("hidden");
+      });
+
+      // Close sidebar if tap/click outside sidebar or overlay
+      function closeSidebar() {
+        sidebar.classList.add("-translate-x-full");
+        overlay.classList.add("hidden");
+      }
+
+      // Clicking/tapping overlay closes sidebar
+      overlay.addEventListener("click", closeSidebar);
+
+      // Clicking/tapping outside sidebar closes sidebar
+      document.addEventListener("click", (event) => {
+        if (
+          !sidebar.contains(event.target) &&
+          !hoverZone.contains(event.target)
+        ) {
+          closeSidebar();
+        }
+      });
+
+      rendition.on("click", function (event) {
+        const prev = document.getElementById("prev");
+        const next = document.getElementById("next");
+        // const pageinfo = document.getElementById("page-info");
+
+        if (prev.style.visibility === "hidden") {
+          prev.style.visibility = "visible";
+          next.style.visibility = "visible";
+          // pageinfo.style.visibility = "visible";
+        } else {
+          prev.style.visibility = "hidden";
+          next.style.visibility = "hidden";
+          // pageinfo.style.visibility = "hidden";
+        }
+      });
+
+      window.addEventListener("unload", function () {
+        console.log("unloading");
+        this.book.destroy();
+      });
+
+      function swipeEvent(body, rendition) {
+        let touchstartX = 0;
+        let touchstartY = 0;
+        let touchendX = 0;
+        let touchendY = 0;
+
+        body?.addEventListener(
+          "touchstart",
+          function (event) {
+            touchstartX = event.changedTouches[0].screenX;
+            touchstartY = event.changedTouches[0].screenY;
+          },
+          { passive: true }
+        );
+
+        body?.addEventListener(
+          "touchend",
+          function (event) {
+            touchendX = event.changedTouches[0].screenX;
+            touchendY = event.changedTouches[0].screenY;
+            handleGesture();
+          },
+          { passive: true }
+        );
+
+        function handleGesture() {
+          const dx = touchendX - touchstartX;
+          const dy = touchendY - touchstartY;
+
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 50) {
+              console.log("Swiped right");
+              rendition.prev();
+            } else if (dx < -50) {
+              console.log("Swiped left");
+              rendition.next();
+            }
+          } else {
+            if (dy > 50) {
+              console.log("Swiped down");
+            } else if (dy < -50) {
+              console.log("Swiped up");
+            }
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

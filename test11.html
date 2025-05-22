@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple Books Clone</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000;
+    background: #f0f0f5;
+  }
+  /* Header bars for Library and Reader */
+  .library-header, .reading-header {
+    background: #fff;
+    color: #000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    line-height: 50px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+    z-index: 10;
+  }
+  #libraryView .bookshelf {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 60px; /* space for header */
+    padding: 10px;
+  }
+  .book-card {
+    width: 120px;
+    margin: 10px;
+    cursor: pointer;
+  }
+  .book-cover {
+    width: 100%;
+    height: 160px;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #333;
+    text-align: center;
+    padding: 10px;
+    /* background color set by JS */
+  }
+  .book-title {
+    margin-top: 5px;
+    font-size: 14px;
+    color: #000;
+    text-align: center;
+  }
+  /* Reader view */
+  #readingView {
+    display: none;
+  }
+  .reading-header {
+    /* fixed header, see .library-header */
+  }
+  .back-btn {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    font-size: 24px;
+    color: #007aff;
+    cursor: pointer;
+    user-select: none;
+  }
+  #reading-title {
+    display: inline-block;
+    font-size: 18px;
+    margin-left: 40px;
+    vertical-align: middle;
+  }
+  .reading-content {
+    position: absolute;
+    top: 50px;
+    bottom: 50px;
+    width: 100vw;
+    overflow: hidden;
+    background: #fff;
+  }
+  .pages {
+    display: flex;
+    height: 100%;
+    transition: transform 0.5s ease;
+  }
+  .page {
+    flex-shrink: 0;
+    width: 100vw;
+    box-sizing: border-box;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .page h2 {
+    margin-top: 0;
+  }
+  .page p {
+    margin-bottom: 1em;
+    line-height: 1.5;
+  }
+  .page-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    background: #fff;
+    padding: 10px 20px;
+    box-shadow: 0 -1px 2px rgba(0,0,0,0.1);
+  }
+  .page-nav button {
+    font-size: 18px;
+    background: none;
+    border: none;
+    color: #007aff;
+    cursor: pointer;
+    padding: 10px;
+  }
+  .page-nav button:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+  /* Responsive tweaks for small screens */
+  @media (max-width: 480px) {
+    .book-card { width: 100px; margin: 8px; }
+    .book-cover { height: 140px; }
+    .book-title { font-size: 12px; }
+    .reading-header { font-size: 16px; }
+    .back-btn { font-size: 20px; top: 8px; }
+    .page-nav button { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+  <!-- Library View -->
+  <div id="libraryView">
+    <div class="library-header">Library</div>
+    <div class="bookshelf" id="bookshelf"></div>
+  </div>
+
+  <!-- Reader View -->
+  <div id="readingView">
+    <div class="reading-header">
+      <div class="back-btn" onclick="closeBook()">←</div>
+      <span id="reading-title">Book Title</span>
+    </div>
+    <div class="reading-content">
+      <div class="pages" id="pagesContainer"></div>
+    </div>
+    <div class="page-nav">
+      <button id="prevBtn" onclick="prevPage()">← Prev</button>
+      <button id="nextBtn" onclick="nextPage()">Next →</button>
+    </div>
+  </div>
+
+  <script>
+    // Mock data: book titles and HTML content for pages
+    const booksData = [
+      {
+        title: "The Great Adventure",
+        pages: [
+          "<h2>Chapter 1</h2><p>It was a bright cold day in April, and the clocks were striking thirteen.</p><p>He sat back in his chair and took a sip of tea, pondering the strange events of the morning.</p>",
+          "<h2>Chapter 2</h2><p>Outside, the city buzzed with activity. People moved in hurried patterns, unaware of the secret that lurked beneath their feet.</p><p>He glanced at the broken watch in his hand and knew time was not on his side.</p>",
+          "<h2>Chapter 3</h2><p>Deep in the forest, shadows danced among the ancient trees. A distant howl pierced the air, and he felt a chill run down his spine.</p><p>He shivered despite the warmth of the fire crackling nearby, sensing that his journey was only beginning.</p>",
+          "<h2>Chapter 4</h2><p>Morning sun broke through the clouds as he set sail on the calm sea. The world seemed at peace for the first time in weeks.</p><p>Yet he couldn’t shake the feeling that adventure awaited beyond the horizon.</p>"
+        ]
+      },
+      {
+        title: "Mystery of the Night",
+        pages: [
+          "<h2>Intro</h2><p>The old mansion stood at the edge of town, its windows like dark, watching eyes. Rumors of secrets hidden within its walls were whispered by every villager.</p><p>No one dared enter after sundown, except for the curious who never returned.</p>",
+          "<h2>Chapter 1</h2><p>Emma arrived at the mansion at dusk. Her heart pounded as she stepped through the creaking door. The air inside was cold and still, as if time had stopped.</p><p>She called out, but only silence answered, broken by the soft scurrying of something unseen.</p>",
+          "<h2>Chapter 2</h2><p>A hidden staircase revealed itself behind a bookshelf, leading down into the darkness. Emma's flashlight flickered, casting long shadows on the stone walls.</p><p>At the bottom, she found a dusty journal with a faded cover. Its pages were filled with writings about the mansion’s dark past.</p>"
+        ]
+      },
+      {
+        title: "Journey to the Stars",
+        pages: [
+          "<h2>Prologue</h2><p>Ever since she was young, Luna had gazed up at the night sky with wonder. The stars spoke to her in whispers, secrets of faraway worlds.</p><p>Now, standing atop the launch tower, she was about to make those whispers a reality.</p>",
+          "<h2>Chapter 1</h2><p>The rocket roared to life beneath her. Smoke and fire enveloped the launch pad as Luna accelerated into the sky.</p><p>Through the porthole, Earth fell away, replaced by the vast expanse of space, dotted with familiar constellations.</p>",
+          "<h2>Chapter 2</h2><p>In the silence of orbit, Luna floated gracefully. She reached out and twirled, disoriented by the lack of gravity yet exhilarated by the freedom.</p><p>The spacecraft hummed around her, a small vessel carrying humanity’s hopes among the stars.</p>"
+        ]
+      }
+    ];
+    // Pastel colors for covers
+    const coverColors = ["#AEDFF7", "#F7E2A0", "#C1A7E2", "#F7A5A5", "#C8F7A6"];
+
+    let currentBook = null;
+    let currentPageIndex = 0;
+
+    // Populate the library with book covers
+    function initLibrary() {
+      const shelf = document.getElementById('bookshelf');
+      booksData.forEach((book, index) => {
+        const card = document.createElement('div');
+        card.className = 'book-card';
+        card.onclick = () => openBook(index);
+
+        const cover = document.createElement('div');
+        cover.className = 'book-cover';
+        cover.style.background = coverColors[index % coverColors.length];
+        card.appendChild(cover);
+
+        const title = document.createElement('div');
+        title.className = 'book-title';
+        title.textContent = book.title;
+        card.appendChild(title);
+
+        shelf.appendChild(card);
+      });
+    }
+
+    // Show the reader view for a selected book
+    function openBook(index) {
+      currentBook = booksData[index];
+      currentPageIndex = 0;
+      document.getElementById('reading-title').textContent = currentBook.title;
+
+      const pagesContainer = document.getElementById('pagesContainer');
+      pagesContainer.innerHTML = ""; // clear previous pages
+      currentBook.pages.forEach(htmlContent => {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageDiv.innerHTML = htmlContent;
+        pagesContainer.appendChild(pageDiv);
+      });
+
+      document.getElementById('libraryView').style.display = 'none';
+      document.getElementById('readingView').style.display = 'block';
+      updateButtons();
+      updatePagePosition();
+    }
+
+    // Return to library view
+    function closeBook() {
+      document.getElementById('readingView').style.display = 'none';
+      document.getElementById('libraryView').style.display = 'block';
+    }
+
+    // Navigate pages
+    function nextPage() {
+      if (currentBook && currentPageIndex < currentBook.pages.length - 1) {
+        currentPageIndex++;
+        updatePagePosition();
+        updateButtons();
+      }
+    }
+    function prevPage() {
+      if (currentBook && currentPageIndex > 0) {
+        currentPageIndex--;
+        updatePagePosition();
+        updateButtons();
+      }
+    }
+    function updatePagePosition() {
+      const pagesDiv = document.getElementById('pagesContainer');
+      pagesDiv.style.transform = 'translateX(-' + (currentPageIndex * 100) + 'vw)';
+    }
+    function updateButtons() {
+      document.getElementById('prevBtn').disabled = (currentPageIndex === 0);
+      document.getElementById('nextBtn').disabled = (currentBook && currentPageIndex >= currentBook.pages.length - 1);
+    }
+
+    document.addEventListener('DOMContentLoaded', initLibrary);
+  </script>
+</body>
+</html>

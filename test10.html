@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no"
+    />
+    <title>Full Screen Book Reader with Swipe</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background: #fff;
+      }
+      #page-container {
+        width: 100vw;
+        height: 100vh;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow: hidden;
+        border: none;
+        user-select: none;
+        position: relative;
+        touch-action: pan-y; /* allow vertical scroll if needed */
+        transition: transform 0.3s ease;
+      }
+      #measurer {
+        position: absolute;
+        visibility: hidden;
+        width: calc(100vw - 40px); /* 20px padding each side */
+        padding: 20px;
+        box-sizing: border-box;
+        white-space: normal;
+      }
+      #controls {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        padding: 8px 16px;
+        border-radius: 24px;
+        display: flex;
+        gap: 10px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+      }
+      #controls.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      #controls button {
+        background: white;
+        border: none;
+        padding: 8px 12px;
+        font-size: 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        user-select: none;
+      }
+      #navigation {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 18px;
+        background: rgba(0, 0, 0, 0.1);
+        padding: 6px 12px;
+        border-radius: 12px;
+        user-select: none;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="page-container"></div>
+
+    <div id="navigation">
+      <span id="page-info"></span>
+    </div>
+
+    <div id="controls">
+      <button id="btn-decrease">A-</button>
+      <button id="btn-increase">A+</button>
+    </div>
+
+    <!-- Hidden element to measure height -->
+    <div id="measurer"></div>
+
+    <script>
+      const text = `この空気の密度の変化、粗密液の状態を表わす方法があれば、音を目に見える形で表現できる。粗液の波形を表わす方法として、縦軸に密度の変化を、横軸に時間の経過を取り。
+これをグラフにまわすと、このように波形を表わすことができる（図1=2）。
+爪密度
+个振幅
+→時間
+←
+波長
+図1-2
+通常、音を物理的に音波として、このグラフのように表わす。そして、波形の曲線の最も高いところから最も低いところまでの幅を振幅という。
+密度の変化が、時間経過によりくり返される曲線の波ひとつを1サイクル、1サイクルに要する時間を周期、1サイクルの波の長さを波長と呼ぶ。音の高低は、1サイクルの音波の周期がどれだけ短いか、長いか、つまり振動数の違いによ
+る。
+高い音は、1秒間に何千回、何万回も振動する音であり、低い音は、何十回、何百回という少ない振動の音である。この振動の数を周波数と呼び、1秒間の振動数を「ヘルツ（比）」の単位で表わす。たとえば、1秒間に100回振動する音は100
+B、1秒間に500回振動すれば500と表示する。
+音楽のドレミファンランドの音の高さの違いは、音階の原波数の違いによって構成されている。低いドの音から、次の高いドの音までの音階をオクタープと呼ぶが、1オクタープの周波数は、低いドの音の2倍となっている（図1～3）。
+つまり、1オクターブ上の音は、2倍の周波数、2オクタ
+ーブ上の音は、4倍の周波数、3オクターブ上の音は、8倍の周波数の音といった関係である。
+※時報のピッピッピツ、ポーンの音は、440Hz、440、440Hz、880Hzのオクターブの音である。
+1・1・2 音の大小
+音の大きさ、小ささは、空気の振動の振幅の大小である。
+振幅が大きいほど、大きな音となり、振幅が小さいと、音は小さくなる。しかし、音の大小は、聴感の感覚量であり、物理量では、音の強さ、弱さという。
+そして、感覚量を音量といい、物理量では音圧と呼ぶ。ところが、音圧レベルが等しくても、周波数が違うと聴感上の音の大きさは違って感じる。1Kの純音の大きさと、同じ大きさに感じる音圧レベルを、ラウドネスレベルと呼んでいる。音の大きさを電気エネルギーに変換して計る場合、オシログラフなどで波形として、振幅で音量が表わされる。
+音圧レベルでは、デシベル（dB）という単位が使われるが、これは、ある量に対する量の割合を示す相対的な数値を表わすものである。たとえば10分の1はー20dB、1000分の1でも
+-60dBといったように大きな数値を簡単に表示できる。
+※デシベルの計算式 2010g B/A=dB
+音の大きさは時間の経過と共に変化する。この変化は音源の性質によって違ってくる。たとえば、鐘の音などは“ゴーン～ウォーン〜ウォーン～ウォーン”といったように波を打ちながら、かなり長い時間をかけて小さくなる。ギターなどは、弦を指で弾いた瞬間に音が一番大きく、時間と共に自然に小さくなる。
+このように、音の出方、消え方は、音量の時間的な変化であり、これは、音波の振幅の時間的な変化である。そして、この振幅の時間的な変化は、楽器によって違うので、楽器の音色を構成する一要素でもある。
+振幅の時間的な変化の一例をグラフに表わすと、図のよう`;
+
+      const pageContainer = document.getElementById("page-container");
+      const measurer = document.getElementById("measurer");
+      const btnIncrease = document.getElementById("btn-increase");
+      const btnDecrease = document.getElementById("btn-decrease");
+      const pageInfo = document.getElementById("page-info");
+      const controls = document.getElementById("controls");
+
+      let fontSize = 16;
+      let pages = [];
+      let currentPage = 0;
+      let controlsTimeout;
+
+      function paginateText() {
+        pages = [];
+        currentPage = 0;
+        measurer.style.fontSize = fontSize + "px";
+        pageContainer.style.fontSize = fontSize + "px";
+
+        const containerHeight = pageContainer.clientHeight;
+
+        let words = text.split(" ");
+        let tempText = "";
+
+        for (let i = 0; i < words.length; i++) {
+          tempText += words[i] + " ";
+          measurer.innerText = tempText.trim();
+
+          if (measurer.scrollHeight > containerHeight) {
+            // Remove last word and push page
+            let lastSpaceIndex = tempText.trim().lastIndexOf(" ");
+            let pageText = tempText.trim().substring(0, lastSpaceIndex);
+            pages.push(pageText);
+            tempText = words[i] + " ";
+          }
+        }
+        if (tempText.trim().length > 0) {
+          pages.push(tempText.trim());
+        }
+        renderPage();
+      }
+
+      function renderPage() {
+        if (pages.length === 0) {
+          pageContainer.innerText = "";
+          pageInfo.innerText = "";
+          return;
+        }
+        pageContainer.innerText = pages[currentPage];
+        pageInfo.innerText = `Page ${currentPage + 1} of ${pages.length}`;
+      }
+
+      btnIncrease.addEventListener("click", () => {
+        fontSize += 2;
+        paginateText();
+        showControlsTemporarily();
+      });
+
+      btnDecrease.addEventListener("click", () => {
+        if (fontSize > 8) {
+          fontSize -= 2;
+          paginateText();
+          showControlsTemporarily();
+        }
+      });
+
+      // Show zoom controls when user taps anywhere on screen
+      function showControlsTemporarily() {
+        controls.classList.add("show");
+        if (controlsTimeout) clearTimeout(controlsTimeout);
+        controlsTimeout = setTimeout(() => {
+          controls.classList.remove("show");
+        }, 3000); // Hide after 3 seconds
+      }
+
+      // Detect tap/click on whole screen to show zoom controls
+      document.body.addEventListener("click", (e) => {
+        // Prevent showing controls if clicked on the buttons themselves to avoid flicker
+        if (e.target.closest("#controls") || e.target.closest("#navigation"))
+          return;
+        showControlsTemporarily();
+      });
+
+      // Swipe support for mobile page navigation
+      let startX = 0;
+      let currentX = 0;
+      let isDragging = false;
+
+      pageContainer.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          startX = e.touches[0].clientX;
+          isDragging = true;
+          pageContainer.style.transition = ""; // disable transition while dragging
+        }
+      });
+
+      pageContainer.addEventListener("touchmove", (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        const deltaX = currentX - startX;
+        pageContainer.style.transform = `translateX(${deltaX}px)`;
+      });
+
+      pageContainer.addEventListener("touchend", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const deltaX = currentX - startX;
+        pageContainer.style.transition = "transform 0.3s ease";
+
+        const threshold = 50; // minimum px to trigger swipe
+
+        if (deltaX > threshold && currentPage > 0) {
+          // Swipe right - previous page
+          currentPage--;
+        } else if (deltaX < -threshold && currentPage < pages.length - 1) {
+          // Swipe left - next page
+          currentPage++;
+        }
+
+        // Reset transform and render page
+        pageContainer.style.transform = "translateX(0)";
+        renderPage();
+        showControlsTemporarily();
+      });
+
+      // Initial pagination
+      paginateText();
+    </script>
+  </body>
+</html>

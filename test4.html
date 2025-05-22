@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smooth Writing App</title>
+    <style>
+      canvas {
+        border: 1px solid black;
+        cursor: crosshair;
+      }
+      .container {
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      input[type="file"] {
+        margin: 20px;
+      }
+    </style>
+    <script src="gif.js"></script>
+    <script src="gif.worker.js"></script>
+  </head>
+  <body>
+    <h2>Write on Canvas to Learn Kanji</h2>
+
+    <!-- File input for image upload -->
+    <input type="file" id="imageUpload" accept="image/*" />
+    <input type="number" id="thickness" placeholder="thickness" value="15" />
+    <div class="container">
+      <canvas id="drawCanvas" width="400" height="500"></canvas>
+
+      <canvas
+        id="drawCanvas2"
+        width="400"
+        height="500"
+        style="border: 1px solid black"
+      ></canvas>
+
+      <canvas id="repeatCanvas" width="400" height="500"></canvas>
+    </div>
+
+    <button id="startDrawingButton">Start Drawing Again</button>
+    <button id="imageCoordinates">Image Coordinates</button>
+
+    <button id="generateGifButton">Generate GIF</button>
+    <p id="message"></p>
+
+    <script>
+      let array1 = [];
+      let array2 = [];
+      let trackedResult = [];
+
+      const drawCanvas = document.getElementById("drawCanvas");
+      const repeatCanvas = document.getElementById("repeatCanvas");
+      const drawCtx = drawCanvas.getContext("2d");
+      const repeatCtx = repeatCanvas.getContext("2d");
+
+      // Make line smoother
+      drawCtx.lineWidth = 1;
+      drawCtx.lineCap = "round";
+      drawCtx.lineJoin = "round";
+      repeatCtx.lineWidth = 1;
+      repeatCtx.lineCap = "round";
+      repeatCtx.lineJoin = "round";
+
+      let isDrawing = false;
+      let lastX = 0;
+      let lastY = 0;
+
+      let points = []; // Store all coordinates here
+      // let tempPoints = [];
+
+      let thicknessMode = false;
+      let thicknessPoints = [];
+      let thickDiameter = document.getElementById("thickness").value;
+
+      let globalUp, globalDown, globalLeft, globalright;
+
+      let image = new Image(); // To store the uploaded image
+
+      // Function to handle image upload
+      document.getElementById("imageUpload").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            image.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Once the image is loaded, draw it onto the canvas
+      image.onload = function () {
+        drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); // Clear the canvas
+        drawCtx.drawImage(image, 0, 0, drawCanvas.width, drawCanvas.height); // Draw the image
+      };
+
+      function getDistanceToWhite(x, y, direction) {
+        let distance = 0;
+        let dx = x,
+          dy = y;
+
+        while (true) {
+          if (direction === "up") dy = y - distance;
+          if (direction === "down") dy = y + distance;
+          if (direction === "left") dx = x - distance;
+          if (direction === "right") dx = x + distance;
+
+          if (
+            dx < 0 ||
+            dy < 0 ||
+            dx >= drawCanvas.width ||
+            dy >= drawCanvas.height
+          )
+            break;
+
+          const pixel = drawCtx.getImageData(dx, dy, 1, 1).data;
+          const [r, g, b] = pixel;
+
+          if (r === 255 && g === 255 && b === 255) break; // stop at white
+
+          distance++;
+        }
+
+        return distance - 1;
+      }
+
+      drawCanvas.addEventListener("mousedown", (e) => {
+        if (!image.src) return; // Don't allow drawing if no image is uploaded
+        if (array1.length == 0) {
+          alert("please click image coordinates");
+          return;
+        }
+
+        if (thicknessMode) {
+          lastX = e.offsetX;
+          lastY = e.offsetY;
+          thicknessPoints.push({ x: lastX, y: lastY, start: true });
+          console.log(thicknessPoints);
+
+          return;
+        }
+
+        isDrawing = true;
+        lastX = e.offsetX;
+        lastY = e.offsetY;
+        points.push({ x: lastX, y: lastY, start: true,thickness:document.getElementById("thickness").value });
+        drawCtx.fillStyle = "red";
+        drawCtx.fillRect(lastX, lastY, 5, 5);
+        // console.log(lastX, lastY);
+        // tempPoints.push({ x: lastX, y: lastY, start: true });
+      });
+
+      drawCanvas.addEventListener("mousemove", (e) => {
+        if (!isDrawing || !image.src) return; // Don't draw if no image is uploaded
+        if (array1.length == 0) {
+          alert("please click image coordinates");
+          return;
+        }
+        const x = e.offsetX;
+        const y = e.offsetY;
+        drawCtx.strokeStyle = "red";
+        drawCtx.beginPath();
+        drawCtx.moveTo(lastX, lastY);
+        drawCtx.lineTo(x, y);
+        drawCtx.stroke();
+
+        // Store points for repeating the drawing
+        points.push({ x, y, start: false,thickness:document.getElementById("thickness").value });
+
+        lastX = x;
+        lastY = y;
+      });
+
+      drawCanvas.addEventListener("mouseup", (e) => {
+        isDrawing = false;
+      });
+
+      drawCanvas.addEventListener("mouseleave", () => {
+        isDrawing = false;
+      });
+
+      // Function to redraw the drawing on the right canvas with slow-motion effect
+      function repeatDrawing() {
+        repeatCtx.clearRect(0, 0, repeatCanvas.width, repeatCanvas.height); // Clear previous lines
+        repeatCtx.beginPath();
+
+        let index = 0;
+
+        function drawSlowMotion() {
+          if (index >= points.length) return; // If all points are drawn, stop the interval
+
+          const point = points[index];
+          if (point.start) {
+            repeatCtx.moveTo(point.x, point.y);
+          } else {
+            repeatCtx.lineTo(point.x, point.y);
+          }
+
+          repeatCtx.stroke();
+          index++;
+
+          // Call the function repeatedly with a delay to create slow-motion effect
+          setTimeout(drawSlowMotion, 20); // 100 ms delay between each point for slow-motion effect
+        }
+
+        drawSlowMotion(); // Start drawing with slow motion
+      }
+
+      // Add event listener for the button to trigger the drawing animation
+      document
+        .getElementById("startDrawingButton")
+        .addEventListener("click", () => {
+          repeatDrawing(); // Start drawing after the user presses the button
+        });
+
+      // Add event listener for the button to trigger the drawing animation
+      document
+        .getElementById("imageCoordinates")
+        .addEventListener("click", () => {
+          const imageData = drawCtx.getImageData(
+            0,
+            0,
+            drawCanvas.width,
+            drawCanvas.height
+          );
+          const data = imageData.data;
+          const blackCoords = [];
+
+          for (let y = 0; y < drawCanvas.height; y++) {
+            for (let x = 0; x < drawCanvas.width; x++) {
+              const index = (y * drawCanvas.width + x) * 4;
+              const r = data[index];
+              const g = data[index + 1];
+              const b = data[index + 2];
+              const a = data[index + 3];
+
+              // Consider pixel "black" if R, G, B are all low (you can adjust the threshold)
+              if (r < 30 && g < 30 && b < 30 && a > 0) {
+                blackCoords.push({ x, y });
+              }
+            }
+          }
+
+          console.log("Black line coordinates:", JSON.stringify(blackCoords));
+
+          array1 = blackCoords;
+        });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "d") {
+          console.log("Points:", JSON.stringify(points));
+          array2 = points;
+        }
+
+        if (e.key === "f") {
+          if (array2.length == 0) {
+            alert("please draw pattern and enter d. before f");
+            return;
+          }
+          trackFinding(array1, array2);
+        }
+        if (e.key === "g") {
+          finalDraw();
+        }
+        if (e.key === "z") {
+          points = filterUpToLastStartTrue(points);
+          drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); // Clear previous lines
+          drawCtx.beginPath();
+          drawCtx.drawImage(image, 0, 0, drawCanvas.width, drawCanvas.height); // Draw the image
+          drawCtx.strokeStyle = "red";
+          points.forEach((i) => {
+            const x = i.x;
+            const y = i.y;
+
+            if (i.start) {
+              drawCtx.fillRect(x, y, 5, 5);
+              drawCtx.moveTo(x, y);
+            } else {
+              drawCtx.lineTo(x, y);
+            }
+            drawCtx.stroke();
+          });
+        }
+
+        if (e.key == "t") {
+          if (thicknessMode) {
+            var myArray = thicknessPoints;
+            var firstItem = myArray[0];
+            var lastItem = myArray[myArray.length - 1];
+            console.log(getThickness(firstItem, lastItem));
+            thickDiameter = getThickness(firstItem, lastItem);
+            document.getElementById("thickness").value = thickDiameter / 2;
+            thicknessPoints = [];
+          }
+          thicknessMode = !thicknessMode;
+        }
+      });
+
+      function trackFinding(array1, array2) {
+        alert("please wait.");
+        const getDistance = (p1, p2) => {
+          return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        };
+
+        // const distanceThreshold = document.getElementById("thickness").value;
+        const matchedPoints = new Set(); // To avoid duplicates
+
+        const result = [];
+
+        for (const temp of array2) {
+       
+          for (const point of array1) {
+            const key = `${point.x},${point.y}`;
+            if (
+              !matchedPoints.has(key) &&
+              getDistance(point, temp) < temp.thickness
+            ) {
+             
+                matchedPoints.add(key);
+                result.push(point);
+
+            }
+          }
+        }
+
+        console.log(JSON.stringify(result));
+        trackedResult = result;
+        alert("please enter g for graph.");
+      }
+
+      function finalDraw() {
+        const canvas = document.getElementById("drawCanvas2");
+        const ctx = canvas.getContext("2d");
+
+        let i = 0;
+        const blocksPerFrame = 20; // Increase this number to speed up more
+
+        const gif = new GIF({
+          workers: 2,
+          quality: 5,
+          width: drawCanvas2.width,
+          height: drawCanvas2.height,
+        });
+
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Add initial white background frame (optional but helps with flickering)
+        gif.addFrame(drawCanvas2, {
+          copy: true,
+          delay: 200,
+        });
+
+        function drawNextBlock() {
+          for (
+            let j = 0;
+            j < blocksPerFrame && i < trackedResult.length;
+            j++, i++
+          ) {
+            const { x, y } = trackedResult[i];
+            ctx.fillStyle = "black";
+            ctx.fillRect(x, y, 1, 1);
+          }
+          gif.addFrame(drawCanvas2, {
+            copy: true,
+            delay: 20,
+          });
+          if (i < trackedResult.length) {
+            requestAnimationFrame(drawNextBlock); // Much more efficient
+          }
+        }
+
+        drawNextBlock();
+
+        let count = 0;
+        let interval;
+        // Generate GIF
+        document
+          .getElementById("generateGifButton")
+          .addEventListener("click", () => {
+            interval = setInterval(() => {
+              count = count + 1;
+              document.getElementById("message").innerText =
+                "please wait for " + count + " seconds";
+            }, 1000);
+            gif.render();
+          });
+
+        gif.on("finished", function (blob) {
+          document.getElementById("message").innerText = "";
+          clearInterval(interval);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "drawing.gif";
+          a.textContent = "Download GIF";
+          document.body.appendChild(a);
+
+          // Optionally, preview the GIF
+          const preview = document.createElement("img");
+          preview.src = url;
+          document.body.appendChild(preview);
+        });
+      }
+
+      function filterUpToLastStartTrue(points) {
+        let lastIndex = -1;
+
+        // Find the last index where start is true
+        for (let i = 0; i < points.length; i++) {
+          if (points[i].start === true) {
+            lastIndex = i;
+          }
+        }
+
+        // If no `start: true` found, return empty array
+        if (lastIndex === -1) return [];
+
+        // Return all points up to and including that index
+        return points.slice(0, lastIndex);
+      }
+
+      function getThickness(p1, p2) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+    </script>
+  </body>
+</html>

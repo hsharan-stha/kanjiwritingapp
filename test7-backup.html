@@ -1,0 +1,29 @@
+<script>
+const array1=
+
+const array2=
+
+
+const getDistance = (p1, p2) => {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+};
+
+
+const distanceThreshold = 12;
+const matchedPoints = new Set(); // To avoid duplicates
+
+const result = [];
+
+for (const temp of array2) {
+for (const point of array1) {
+const key = `${point.x},${point.y}`;
+if (!matchedPoints.has(key) && getDistance(point, temp) < distanceThreshold) {
+matchedPoints.add(key);
+result.push(point);
+}
+}
+}
+
+console.log(JSON.stringify(result))
+
+</script>

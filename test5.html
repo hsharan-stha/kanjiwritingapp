@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kanji Practice with Stylus Support</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f5f5f5;
+    }
+    canvas {
+      border: 1px solid black;
+      cursor: crosshair;
+      touch-action: none;
+      width: 100%;
+      height: 100%;
+    }
+    button {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #333;">Kanji Practice (Use Stylus, Touch, or Mouse)</h2>
+  
+  <!-- Only the drawing canvas, taking full screen -->
+  <canvas id="drawCanvas"></canvas>
+
+  <div style="text-align:center;">
+    <button id="startDrawingButton">Replay My Drawing</button>
+  </div>
+
+  <script>
+    const drawCanvas = document.getElementById('drawCanvas');
+    const drawCtx = drawCanvas.getContext('2d');
+  
+    function resizeCanvas() {
+      drawCanvas.width = window.innerWidth;
+      drawCanvas.height = window.innerHeight;
+    }
+  
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+  
+    drawCtx.lineWidth = 15;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+  
+    const points = [];
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let strokeCount = 0;
+  
+    drawCanvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      isDrawing = true;
+      const rect = drawCanvas.getBoundingClientRect();
+      lastX = e.clientX - rect.left;
+      lastY = e.clientY - rect.top;
+  
+      strokeCount++;
+      drawCtx.fillStyle = 'red';
+      drawCtx.font = '20px Arial';
+      drawCtx.fillText(`${strokeCount}`, lastX + 15, lastY - 15); // Live stroke label
+      points.push({ x: lastX, y: lastY, start: true, strokeNumber: strokeCount });
+    });
+  
+    drawCanvas.addEventListener('pointermove', (e) => {
+      if (!isDrawing) return;
+      const rect = drawCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      drawCtx.beginPath();
+      drawCtx.moveTo(lastX, lastY);
+      drawCtx.lineTo(x, y);
+      drawCtx.stroke();
+      points.push({ x, y, start: false, strokeNumber: strokeCount });
+      lastX = x;
+      lastY = y;
+    });
+  
+    drawCanvas.addEventListener('pointerup', () => isDrawing = false);
+    drawCanvas.addEventListener('pointerleave', () => isDrawing = false);
+  
+    // Replay with stroke numbers
+    document.getElementById('startDrawingButton').addEventListener('click', () => {
+      const replayCtx = drawCanvas.getContext('2d');
+      replayCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+      replayCtx.lineWidth = 15;
+      replayCtx.lineCap = 'round';
+      replayCtx.lineJoin = 'round';
+      replayCtx.beginPath();
+  
+      let index = 0;
+      function drawNext() {
+        if (index >= points.length) return;
+        const point = points[index];
+        if (point.start) {
+          replayCtx.moveTo(point.x, point.y);
+          // Draw stroke number
+          replayCtx.fillStyle = 'blue';
+          replayCtx.font = '20px Arial';
+          replayCtx.fillText(`${point.strokeNumber}`, point.x + 15, point.y - 15);
+        } else {
+          replayCtx.lineTo(point.x, point.y);
+        }
+        replayCtx.stroke();
+        index++;
+        setTimeout(drawNext, 25);
+      }
+      drawNext();
+    });
+  </script>
+  
+</body>
+</html>
