@@ -197,10 +197,13 @@
         width: "100%",
         height: "100%",
         spread: "none",
-        manager: localStorage.getItem("flow") == "scrolled" ? "continuous" : "default"
+        manager:
+          localStorage.getItem("flow") == "scrolled" ? "continuous" : "default",
       });
 
-      let currentFontSize = parseInt(localStorage.getItem("currentFontSize") || 100);
+      let currentFontSize = parseInt(
+        localStorage.getItem("currentFontSize") || 100
+      );
       rendition.themes.fontSize(currentFontSize + "%");
       function changeFontSize(delta) {
         if (
@@ -367,7 +370,9 @@
           function (event) {
             touchendX = event.changedTouches[0].screenX;
             touchendY = event.changedTouches[0].screenY;
-            handleGesture();
+            if (localStorage.getItem("flow") == "paginated") {
+              handleGesture();
+            }
           },
           { passive: true }
         );
