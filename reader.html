@@ -20,7 +20,7 @@
     <style>
       body {
         margin: 0;
-        padding: 50px 0px;
+        padding: 0px 0px;
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -96,7 +96,10 @@
   </head>
 
   <body>
-    <div id="viewer"></div>
+    <div
+      id="viewer"
+      class="transition-opacity duration-300 ease-in-out opacity-100"
+    ></div>
 
     <div id="prev" class="arrow hidden">‹</div>
     <div id="next" class="arrow hidden">›</div>
@@ -118,14 +121,14 @@
           <span class="text-gray-700 font-semibold">Font Size</span>
           <div class="flex gap-2">
             <button
-              onclick="changeFontSize(10)"
+              onclick="changeFontSize(72)"
               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
               title="Increase Font Size"
             >
               A+
             </button>
             <button
-              onclick="changeFontSize(-10)"
+              onclick="changeFontSize(-72)"
               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
               title="Decrease Font Size"
             >
@@ -163,6 +166,15 @@
           </div>
         </div>
       </div>
+      <div class="flex items-center justify-center mt-4">
+        <button
+          id="themeToggleBtn"
+          onclick="toggleTheme()"
+          class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-2 py-2 rounded-lg cursor-pointer transition shadow"
+        >
+          Switch to dark Mode
+        </button>
+      </div>
       <div class="mt-6">
         <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
           📘 Table of Contents
@@ -186,6 +198,9 @@
     </div>
 
     <script>
+      if (!localStorage.getItem("flow")) {
+        localStorage.setItem("flow", "paginated");
+      }
       var flowMode = document.querySelectorAll(
         `input[value="${localStorage.getItem("flow")}"]`
       );
@@ -221,7 +236,10 @@
         }
       }
 
-      book.ready.then(() => {
+      book.ready.then((book) => {
+            return this.book.locations.generate();
+        }).then((locations ) => {
+           console.log("Total Pages?: ", locations.length);
         const saved = localStorage.getItem("epub-location");
 
         if (saved) {
@@ -244,15 +262,27 @@
       });
 
       rendition.on("relocated", function (location) {
+        console.log( this.book.locations)
         localStorage.setItem("epub-location", location.end.cfi);
 
-        const page = location?.start?.displayed?.page || 0;
-        const total = location?.start?.displayed?.total || 0;
-        const index = location?.start?.index + 1 || 1;
+        const displayed = location?.start?.displayed;
+        const index = (location?.start?.index ?? 0) + 1;
+        console.log(location)
 
-        document.getElementById(
-          "page-number"
-        ).textContent = `page ${page} / ${total} of chapter ${index}`;
+        if (displayed && displayed.page && displayed.total) {
+          const page = displayed.page;
+          const total = displayed.total;
+
+          document.getElementById(
+            "page-number"
+          ).textContent = `Page ${page} / ${total} of Chapter ${index}`;
+        } else {
+          document.getElementById(
+            "page-number"
+          ).textContent = `Chapter ${index}`;
+        }
+
+        // Hide/show navigation buttons
         document.getElementById("prev").style.visibility = location.atStart
           ? "hidden"
           : "visible";
@@ -295,6 +325,50 @@
           );
         }
       });
+
+      rendition.themes.register("light", {
+        body: {
+          background: "#ffffff",
+          color: "#000000",
+        },
+      });
+
+      rendition.themes.register("dark", {
+        body: {
+          background: "#1e1e1e",
+          color: "#ffffff",
+        },
+        img: {
+          filter: "brightness(0.8)",
+        },
+      });
+
+      const savedTheme = localStorage.getItem("epubTheme") || "light";
+      setTheme(savedTheme);
+
+      function setTheme(mode) {
+        rendition.themes.select(mode);
+        localStorage.setItem("epubTheme", mode);
+        if (localStorage.getItem("epubTheme") == "dark") {
+          document.getElementById("themeToggleBtn").innerHTML =
+            "Switch to light mode";
+        } else {
+          document.getElementById("themeToggleBtn").innerHTML =
+            "Switch to dark mode";
+        }
+      }
+
+      function toggleTheme() {
+        if (localStorage.getItem("epubTheme") == "dark") {
+          setTheme("light");
+          document.getElementById("themeToggleBtn").innerHTML =
+            "Switch to dark mode";
+        } else {
+          setTheme("dark");
+          document.getElementById("themeToggleBtn").innerHTML =
+            "Switch to light mode";
+        }
+      }
 
       document.getElementById("close-viewer").addEventListener("click", () => {
         document.getElementById("image-viewer").style.display = "none";
@@ -351,45 +425,100 @@
       });
 
       function swipeEvent(body, rendition) {
-        let touchstartX = 0;
-        let touchstartY = 0;
-        let touchendX = 0;
-        let touchendY = 0;
+        // let touchstartX = 0;
+        // let touchstartY = 0;
+        // let touchendX = 0;
+        // let touchendY = 0;
 
-        body?.addEventListener(
-          "touchstart",
-          function (event) {
-            touchstartX = event.changedTouches[0].screenX;
-            touchstartY = event.changedTouches[0].screenY;
-          },
-          { passive: true }
-        );
+        // body?.addEventListener(
+        //   "touchstart",
+        //   function (event) {
+        //     touchstartX = event.changedTouches[0].screenX;
+        //     touchstartY = event.changedTouches[0].screenY;
+        //   },
+        //   { passive: true }
+        // );
 
-        body?.addEventListener(
-          "touchend",
-          function (event) {
-            touchendX = event.changedTouches[0].screenX;
-            touchendY = event.changedTouches[0].screenY;
-            if (localStorage.getItem("flow") == "paginated") {
-              handleGesture();
+        // body?.addEventListener(
+        //   "touchend",
+        //   function (event) {
+        //     touchendX = event.changedTouches[0].screenX;
+        //     touchendY = event.changedTouches[0].screenY;
+        //     if (localStorage.getItem("flow") == "paginated") {
+        //       handleGesture();
+        //     }
+        //   },
+        //   { passive: true }
+        // );
+
+        // function handleGesture() {
+        //   const dx = touchendX - touchstartX;
+        //   const dy = touchendY - touchstartY;
+
+        //   if (Math.abs(dx) > Math.abs(dy)) {
+        //     if (dx > 50) {
+        //       console.log("Swiped right");
+        //       rendition.prev();
+        //     } else if (dx < -50) {
+        //       console.log("Swiped left");
+        //       rendition.next();
+        //     }
+        //   }
+        // }
+
+        function fadeAndTurnPage(direction) {
+          const viewer = document.getElementById("viewer");
+
+          // Fade out
+          viewer.classList.remove("opacity-100");
+          viewer.classList.add("opacity-0");
+
+          // Wait for fade out to complete, then turn page and fade in
+          setTimeout(() => {
+            if (direction === "left") {
+              rendition.next();
+            } else if (direction === "right") {
+              rendition.prev();
             }
-          },
-          { passive: true }
-        );
 
-        function handleGesture() {
-          const dx = touchendX - touchstartX;
-          const dy = touchendY - touchstartY;
+            // Fade in
+            viewer.classList.remove("opacity-0");
+            viewer.classList.add("opacity-100");
+          }, 300); // match Tailwind `duration-300`
+        }
+
+        body.addEventListener("touchstart", handleTouchStart, false);
+        body.addEventListener("touchend", handleTouchEnd, false);
+
+        let xDown = null;
+        let yDown = null;
+
+        function handleTouchStart(evt) {
+          xDown = evt.touches[0].clientX;
+          yDown = evt.touches[0].clientY;
+        }
+
+        function handleTouchEnd(evt) {
+          if (!xDown || !yDown) return;
+
+          const xUp = evt.changedTouches[0].clientX;
+          const yUp = evt.changedTouches[0].clientY;
+
+          const dx = xUp - xDown;
+          const dy = yUp - yDown;
 
           if (Math.abs(dx) > Math.abs(dy)) {
             if (dx > 50) {
               console.log("Swiped right");
-              rendition.prev();
+              fadeAndTurnPage("right");
             } else if (dx < -50) {
               console.log("Swiped left");
-              rendition.next();
+              fadeAndTurnPage("left");
             }
           }
+
+          xDown = null;
+          yDown = null;
         }
       }
 
