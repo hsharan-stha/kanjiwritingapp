@@ -119,6 +119,23 @@
         <!-- Font Controls -->
         <div class="flex items-center justify-between">
           <span class="text-gray-700 font-semibold">Font Size</span>
+          <div class="flex items-center gap-2">
+            <input
+              id="fontSizeSlider"
+              type="range"
+              min="50"
+              max="500"
+              step="10"
+              value="100"
+              class="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              title="Adjust Font Size"
+              onchange="changeFontSize(this.value)"
+            />
+            <span id="fontSizeValue" class="text-sm text-gray-600">16px</span>
+          </div>
+        </div>
+        <!-- <div class="flex items-center justify-between">
+          <span class="text-gray-700 font-semibold">Font Size</span>
           <div class="flex gap-2">
             <button
               onclick="changeFontSize(10)"
@@ -135,7 +152,7 @@
               A-
             </button>
           </div>
-        </div>
+        </div> -->
 
         <!-- Flow Mode Toggle -->
         <div>
@@ -219,55 +236,66 @@
       let currentFontSize = parseInt(
         localStorage.getItem("currentFontSize") || 100
       );
+      document.getElementById(
+        "fontSizeValue"
+      ).innerHTML = `${currentFontSize}px`;
+      document.getElementById("fontSizeSlider").value = `${currentFontSize}`;
+
       rendition.themes.fontSize(currentFontSize + "%");
       function changeFontSize(delta) {
-        if (
-          (delta > 0 && currentFontSize < 500) ||
-          (delta < 0 && currentFontSize > 50)
-        ) {
-          currentFontSize += delta;
-          const loc = rendition.currentLocation();
-          console.log(currentFontSize);
-          rendition.themes.fontSize(currentFontSize + "%");
-          localStorage.setItem("currentFontSize", currentFontSize);
-          if (loc && loc.start && loc.start.cfi) {
-            rendition.display(loc.start.cfi);
-          }
+        console.log(delta);
+        // if (
+        //   (delta > 0 && currentFontSize < 500) ||
+        //   (delta < 0 && currentFontSize > 50)
+        // ) {
+        currentFontSize = delta;
+        document.getElementById(
+          "fontSizeValue"
+        ).innerHTML = `${currentFontSize}px`;
+        const loc = rendition.currentLocation();
+        console.log(currentFontSize);
+        rendition.themes.fontSize(currentFontSize + "%");
+        localStorage.setItem("currentFontSize", currentFontSize);
+        if (loc && loc.start && loc.start.cfi) {
+          rendition.display(loc.start.cfi);
         }
+        // }
       }
 
-      book.ready.then((book) => {
-            return this.book.locations.generate();
-        }).then((locations ) => {
-           console.log("Total Pages?: ", locations.length);
-        const saved = localStorage.getItem("epub-location");
+      book.ready
+        .then((book) => {
+          return this.book.locations.generate();
+        })
+        .then((locations) => {
+          console.log("Total Pages?: ", locations.length);
+          const saved = localStorage.getItem("epub-location");
 
-        if (saved) {
-          rendition.display(saved);
-        } else {
-          rendition.display();
-        }
+          if (saved) {
+            rendition.display(saved);
+          } else {
+            rendition.display();
+          }
 
-        document
-          .getElementById("next")
-          .addEventListener("click", () => rendition.next());
-        document
-          .getElementById("prev")
-          .addEventListener("click", () => rendition.prev());
+          document
+            .getElementById("next")
+            .addEventListener("click", () => rendition.next());
+          document
+            .getElementById("prev")
+            .addEventListener("click", () => rendition.prev());
 
-        document.addEventListener("keyup", (e) => {
-          if (e.key === "ArrowRight") rendition.next();
-          if (e.key === "ArrowLeft") rendition.prev();
+          document.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowRight") rendition.next();
+            if (e.key === "ArrowLeft") rendition.prev();
+          });
         });
-      });
 
       rendition.on("relocated", function (location) {
-        console.log( this.book.locations)
+        console.log(this.book.locations);
         localStorage.setItem("epub-location", location.end.cfi);
 
         const displayed = location?.start?.displayed;
         const index = (location?.start?.index ?? 0) + 1;
-        console.log(location)
+        console.log(location);
 
         if (displayed && displayed.page && displayed.total) {
           const page = displayed.page;
