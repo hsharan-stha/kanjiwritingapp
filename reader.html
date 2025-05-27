@@ -121,14 +121,14 @@
           <span class="text-gray-700 font-semibold">Font Size</span>
           <div class="flex gap-2">
             <button
-              onclick="changeFontSize(72)"
+              onclick="changeFontSize(10)"
               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
               title="Increase Font Size"
             >
               A+
             </button>
             <button
-              onclick="changeFontSize(-72)"
+              onclick="changeFontSize(-10)"
               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
               title="Decrease Font Size"
             >
@@ -406,16 +406,16 @@
       rendition.on("click", function (event) {
         const prev = document.getElementById("prev");
         const next = document.getElementById("next");
-        // const pageinfo = document.getElementById("page-info");
+        const pageinfo = document.getElementById("page-info");
 
         if (prev.style.visibility === "hidden") {
           prev.style.visibility = "visible";
           next.style.visibility = "visible";
-          // pageinfo.style.visibility = "visible";
+          pageinfo.style.visibility = "visible";
         } else {
           prev.style.visibility = "hidden";
           next.style.visibility = "hidden";
-          // pageinfo.style.visibility = "hidden";
+          pageinfo.style.visibility = "hidden";
         }
       });
 
