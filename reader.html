@@ -97,6 +97,14 @@
 
   <body>
     <div
+      id="loader"
+      class="fixed inset-0 flex items-center justify-center bg-white z-50"
+    >
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-solid"
+      ></div>
+    </div>
+    <div
       id="viewer"
       class="transition-opacity duration-300 ease-in-out opacity-100"
     ></div>
@@ -123,7 +131,7 @@
             <input
               id="fontSizeSlider"
               type="range"
-              min="50"
+              min="100"
               max="500"
               step="10"
               value="100"
@@ -232,6 +240,9 @@
     </div>
 
     <script>
+      const loader = document.getElementById("loader");
+      // Show loader initially
+      loader.style.display = "flex";
       if (!localStorage.getItem("flow")) {
         localStorage.setItem("flow", "paginated");
       }
@@ -284,6 +295,7 @@
           return this.book.locations.generate();
         })
         .then((locations) => {
+          loader.style.display = "none";
           console.log("Total Pages?: ", locations.length);
           const saved = localStorage.getItem("epub-location");
 
@@ -519,7 +531,7 @@
           viewer.classList.add("opacity-0");
 
           // Wait for fade out to complete, then turn page and fade in
-          setTimeout(() => {
+          // setTimeout(() => {
             if (direction === "left") {
               rendition.next();
             } else if (direction === "right") {
@@ -529,7 +541,7 @@
             // Fade in
             viewer.classList.remove("opacity-0");
             viewer.classList.add("opacity-100");
-          }, 300); // match Tailwind `duration-300`
+          // }, 0); // match Tailwind `duration-300`
         }
 
         body.addEventListener("touchstart", handleTouchStart, false);
@@ -544,6 +556,7 @@
         }
 
         function handleTouchEnd(evt) {
+          if (localStorage.getItem("flow") != "paginated") return;
           if (!xDown || !yDown) return;
 
           const xUp = evt.changedTouches[0].clientX;
