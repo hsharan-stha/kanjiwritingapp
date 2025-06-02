@@ -191,7 +191,18 @@
           </div>
         </div>
       </div>
-      <div class="flex items-center justify-center mt-4">
+      <select
+        id="fontFamily"
+        onchange="setCustomFont(this.value)"
+        class="mt-4 p-2 rounded-md border border-gray-300 text-gray-800 bg-white"
+      >
+        <option value="Georgia">Georgia</option>
+        <option value="Arial">Arial</option>
+        <option value="Verdana">Verdana</option>
+        <option value="Times New Roman">Times New Roman</option>
+      </select>
+
+      <div class="flex items-center my-4">
         <button
           id="themeToggleBtn"
           onclick="toggleTheme()"
@@ -321,23 +332,44 @@
       rendition.on("relocated", function (location) {
         console.log(this.book.locations);
         localStorage.setItem("epub-location", location.end.cfi);
+        const currentPage = book.locations.percentageFromCfi(
+          location.start.cfi
+        );
+        console.log(currentPage);
+        document.getElementById("page-number").textContent =
+          "Page " + Math.round(currentPage * 100) + "%";
 
-        const displayed = location?.start?.displayed;
-        const index = (location?.start?.index ?? 0) + 1;
-        console.log(location);
+        console.log(location?.start?.href);
 
-        if (displayed && displayed.page && displayed.total) {
-          const page = displayed.page;
-          const total = displayed.total;
+        const tocList = document.getElementById("toc");
+        const list = Array.from(tocList.getElementsByTagName("li"));
+        list.forEach((i, k) => {
+          i.classList = "p-2 rounded cursor-pointer";
 
-          document.getElementById(
-            "page-number"
-          ).textContent = `Page ${page} / ${total} of Chapter ${index}`;
-        } else {
-          document.getElementById(
-            "page-number"
-          ).textContent = `Chapter ${index}`;
-        }
+          if (location?.start?.index == k) {
+            i.classList = "bg-gray-100 p-2 rounded cursor-pointer";
+          }
+          console.log(i);
+        });
+        //   if(chapter.href== location?.start?.href){
+        //    li.className = "bg-gray-100 p-2 rounded cursor-pointer";
+        // }
+        // const displayed = location?.start?.displayed;
+        // const index = (location?.start?.index ?? 0) + 1;
+        // console.log(location);
+
+        // if (displayed && displayed.page && displayed.total) {
+        //   const page = displayed.page;
+        //   const total = displayed.total;
+
+        //   document.getElementById(
+        //     "page-number"
+        //   ).textContent = `Page ${page} / ${total} of Chapter ${index}`;
+        // } else {
+        //   document.getElementById(
+        //     "page-number"
+        //   ).textContent = `Chapter ${index}`;
+        // }
 
         // Hide/show navigation buttons
         document.getElementById("prev").style.visibility = location.atStart
@@ -352,12 +384,23 @@
         const tocList = document.getElementById("toc");
         toc.forEach(function (chapter) {
           const li = document.createElement("li");
-          li.className = "hover:bg-gray-100 p-2 rounded cursor-pointer";
+          li.className = "p-2 rounded cursor-pointer";
           li.textContent = chapter.label;
           li.setAttribute("data-href", chapter.href);
           li.onclick = () => {
             rendition.display(chapter.href);
+            localStorage.setItem("currentChapter", chapter.href);
+
+            const list = Array.from(tocList.getElementsByTagName("li"));
+            list.forEach((i) => {
+              i.classList = "p-2 rounded cursor-pointer";
+              console.log(i);
+            });
+            li.className = "bg-gray-100 p-2 rounded cursor-pointer";
           };
+          if (chapter.href == localStorage.getItem("currentChapter")) {
+            li.className = "bg-gray-100 p-2 rounded cursor-pointer";
+          }
           tocList.appendChild(li);
         });
       });
@@ -365,22 +408,23 @@
       rendition.on("rendered", function (section) {
         const iframe = document.querySelector("#viewer iframe");
         swipeEvent(iframe.contentWindow.document, rendition);
-        if (iframe && iframe.contentDocument) {
-          iframe.contentDocument.body.addEventListener(
-            "click",
-            function (event) {
-              const target = event.target;
-              if (target.tagName === "IMG") {
-                const src = target.getAttribute("src");
-                if (src) {
-                  const viewer = document.getElementById("image-viewer");
-                  document.getElementById("fullscreen-img").src = src;
-                  viewer.style.display = "flex";
-                }
-              }
-            }
-          );
-        }
+        applyFont();
+        // if (iframe && iframe.contentDocument) {
+        //   iframe.contentDocument.body.addEventListener(
+        //     "click",
+        //     function (event) {
+        //       const target = event.target;
+        //       if (target.tagName === "IMG") {
+        //         const src = target.getAttribute("src");
+        //         if (src) {
+        //           const viewer = document.getElementById("image-viewer");
+        //           document.getElementById("fullscreen-img").src = src;
+        //           viewer.style.display = "flex";
+        //         }
+        //       }
+        //     }
+        //   );
+        // }
       });
 
       rendition.themes.register("light", {
@@ -474,6 +518,16 @@
           next.style.visibility = "hidden";
           pageinfo.style.visibility = "hidden";
         }
+
+        const target = event.target;
+        if (target.tagName === "IMG") {
+          const src = target.getAttribute("src");
+          if (src) {
+            const viewer = document.getElementById("image-viewer");
+            document.getElementById("fullscreen-img").src = src;
+            viewer.style.display = "flex";
+          }
+        }
       });
 
       window.addEventListener("unload", function () {
@@ -532,15 +586,15 @@
 
           // Wait for fade out to complete, then turn page and fade in
           // setTimeout(() => {
-            if (direction === "left") {
-              rendition.next();
-            } else if (direction === "right") {
-              rendition.prev();
-            }
+          if (direction === "left") {
+            rendition.next();
+          } else if (direction === "right") {
+            rendition.prev();
+          }
 
-            // Fade in
-            viewer.classList.remove("opacity-0");
-            viewer.classList.add("opacity-100");
+          // Fade in
+          viewer.classList.remove("opacity-0");
+          viewer.classList.add("opacity-100");
           // }, 0); // match Tailwind `duration-300`
         }
 
@@ -666,6 +720,25 @@
             updateTransform();
             viewer.style.display = "none";
           });
+      }
+
+      function setCustomFont(fontName) {
+        localStorage.setItem("font", fontName);
+        const viewer = document.querySelector("#viewer iframe");
+        if (viewer) {
+          const doc = viewer.contentDocument;
+          doc.body.style.fontFamily = fontName;
+        }
+      }
+
+      function applyFont() {
+        const font = localStorage.getItem("font") || "Georgia";
+        const viewer = document.querySelector("#viewer iframe");
+        document.getElementById("fontFamily").value = font;
+        if (viewer) {
+          const doc = viewer.contentDocument;
+          doc.body.style.fontFamily = font;
+        }
       }
     </script>
   </body>
