@@ -12,9 +12,13 @@
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/detect_swipe/2.1.1/jquery.detect_swipe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/detect_swipe/2.1.1/jquery.detect_swipe.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script> -->
     <script src="./epub.js"></script>
+    <script src="./turn.js"></script>
+
+    <script src="./turn.min.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -92,10 +96,30 @@
         color: white;
         cursor: pointer;
       }
+
+      #flipbook
+      {border:solid 1px red}
     </style>
   </head>
 
   <body>
+  <!-- <div id="flipbook">
+	<div class="hard"> Turn.js </div>
+	<div class="hard"></div>
+	<div> Page 1 </div>
+	<div> Page 2 </div>
+	<div> Page 3 </div>
+	<div> Page 4 </div>
+	<div class="hard"></div>
+	<div class="hard"></div>
+</div>
+<script type="text/javascript">
+	$("#flipbook").turn({
+		width: 400,
+		height: 300,
+		autoCenter: true
+	});
+</script> -->
     <div
       id="loader"
       class="fixed inset-0 flex items-center justify-center bg-white z-50"
@@ -109,8 +133,8 @@
       class="transition-opacity duration-300 ease-in-out opacity-100"
     ></div>
 
-    <div id="prev" class="arrow hidden">‹</div>
-    <div id="next" class="arrow hidden">›</div>
+    <!-- <div id="prev" class="arrow hidden">‹</div>
+    <div id="next" class="arrow hidden">›</div> -->
 
     <!-- Hover Zone (small invisible strip on left edge) -->
     <div
@@ -123,7 +147,7 @@
       id="sidebar"
       class="fixed top-0 left-0 h-full w-64 bg-white p-4 shadow-lg transform -translate-x-full transition-transform duration-300 z-[1001] space-y-4 overflow-auto"
     >
-      <div class="relative max-w-xl mx-auto mt-4">
+      <!-- <div class="relative max-w-xl mx-auto mt-4">
         <div class="flex items-center space-x-2">
           <input
             type="text"
@@ -157,10 +181,9 @@
           id="searchResults"
           class="mt-4 space-y-2 text-sm text-gray-700"
         ></ul>
-      </div>
+      </div> -->
 
-      <div class="space-y-6">
-        <!-- Font Controls -->
+      <!-- <div class="space-y-6">
         <div class="flex items-center justify-between">
           <span class="text-gray-700 font-semibold">Font Size</span>
           <div class="flex items-center gap-2">
@@ -178,27 +201,8 @@
             <span id="fontSizeValue" class="text-sm text-gray-600">16px</span>
           </div>
         </div>
-        <!-- <div class="flex items-center justify-between">
-          <span class="text-gray-700 font-semibold">Font Size</span>
-          <div class="flex gap-2">
-            <button
-              onclick="changeFontSize(10)"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
-              title="Increase Font Size"
-            >
-              A+
-            </button>
-            <button
-              onclick="changeFontSize(-10)"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg shadow transition"
-              title="Decrease Font Size"
-            >
-              A-
-            </button>
-          </div>
-        </div> -->
+      
 
-        <!-- Flow Mode Toggle -->
         <div>
           <span class="text-gray-700 font-semibold">Flow Mode</span>
           <div class="mt-2 flex gap-3">
@@ -226,8 +230,8 @@
             </label>
           </div>
         </div>
-      </div>
-      <select
+      </div> -->
+      <!-- <select
         id="fontFamily"
         onchange="setCustomFont(this.value)"
         class="mt-4 p-2 rounded-md border border-gray-300 text-gray-800 bg-white"
@@ -236,9 +240,9 @@
         <option value="Arial">Arial</option>
         <option value="Verdana">Verdana</option>
         <option value="Times New Roman">Times New Roman</option>
-      </select>
+      </select> -->
 
-      <div class="flex items-center my-4">
+      <!-- <div class="flex items-center my-4">
         <button
           id="themeToggleBtn"
           onclick="toggleTheme()"
@@ -246,7 +250,7 @@
         >
           Switch to dark Mode
         </button>
-      </div>
+      </div> -->
       <div class="mt-6">
         <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
           📘 Table of Contents
@@ -261,10 +265,10 @@
       class="hidden fixed inset-0 bg-black bg-opacity-50 z-[1000]"
     ></div>
 
-    <div id="page-info"><span id="page-number"></span></div>
+    <!-- <div id="page-info" class="hidden"><span id="page-number"></span></div> -->
 
     <!-- Fullscreen Image Viewer -->
-    <div
+    <!-- <div
       id="image-viewer"
       class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 touch-none overflow-hidden"
     >
@@ -284,58 +288,54 @@
           style="transform: scale(1) translate(0px, 0px)"
         />
       </div>
-    </div>
+    </div> -->
 
     <script>
       const loader = document.getElementById("loader");
       // Show loader initially
       loader.style.display = "flex";
-      if (!localStorage.getItem("flow")) {
-        localStorage.setItem("flow", "paginated");
-      }
-      var flowMode = document.querySelectorAll(
-        `input[value="${localStorage.getItem("flow")}"]`
-      );
-      flowMode[0]?.setAttribute("checked", true);
-      console.log(flowMode);
+      // if (!localStorage.getItem("flow")) {
+      //   localStorage.setItem("flow", "paginated");
+      // }
+      // var flowMode = document.querySelectorAll(
+      //   `input[value="${localStorage.getItem("flow")}"]`
+      // );
+      // flowMode[0]?.setAttribute("checked", true);
+      // console.log(flowMode);
       var book = ePub("http://192.168.10.12/kanji-prac/epub/ImageOnly.epub");
       const rendition = book.renderTo("viewer", {
-        flow: localStorage.getItem("flow") || "paginated",
+        flow: "paginated",
         width: "100%",
         height: "100%",
         spread: "none",
-        manager:
-          localStorage.getItem("flow") == "scrolled" ? "continuous" : "default",
+        manager:"default" ,
       });
 
       let currentFontSize = parseInt(
         localStorage.getItem("currentFontSize") || 100
       );
-      document.getElementById(
-        "fontSizeValue"
-      ).innerHTML = `${currentFontSize}px`;
-      document.getElementById("fontSizeSlider").value = `${currentFontSize}`;
+      // document.getElementById(
+      //   "fontSizeValue"
+      // ).innerHTML = `${currentFontSize}px`;
+      // document.getElementById("fontSizeSlider").value = `${currentFontSize}`;
 
       rendition.themes.fontSize(currentFontSize + "%");
-      function changeFontSize(delta) {
-        console.log(delta);
-        // if (
-        //   (delta > 0 && currentFontSize < 500) ||
-        //   (delta < 0 && currentFontSize > 50)
-        // ) {
-        currentFontSize = delta;
-        document.getElementById(
-          "fontSizeValue"
-        ).innerHTML = `${currentFontSize}px`;
-        const loc = rendition.currentLocation();
-        console.log(currentFontSize);
-        rendition.themes.fontSize(currentFontSize + "%");
-        localStorage.setItem("currentFontSize", currentFontSize);
-        if (loc && loc.start && loc.start.cfi) {
-          rendition.display(loc.start.cfi);
-        }
-        // }
-      }
+      // function changeFontSize(delta) {
+      //   console.log(delta);
+      
+      //   currentFontSize = delta;
+      //   document.getElementById(
+      //     "fontSizeValue"
+      //   ).innerHTML = `${currentFontSize}px`;
+      //   const loc = rendition.currentLocation();
+      //   console.log(currentFontSize);
+      //   rendition.themes.fontSize(currentFontSize + "%");
+      //   localStorage.setItem("currentFontSize", currentFontSize);
+      //   if (loc && loc.start && loc.start.cfi) {
+      //     rendition.display(loc.start.cfi);
+      //   }
+       
+      // }
 
       book.ready
         .then((book) => {
@@ -343,7 +343,7 @@
         })
         .then((locations) => {
           loader.style.display = "none";
-          console.log("Total Pages?: ", locations.length);
+          // console.log("Total Pages?: ", locations.length);
           const saved = localStorage.getItem("epub-location");
 
           if (saved) {
@@ -352,30 +352,30 @@
             rendition.display();
           }
 
-          document
-            .getElementById("next")
-            .addEventListener("click", () => rendition.next());
-          document
-            .getElementById("prev")
-            .addEventListener("click", () => rendition.prev());
+          // document
+          //   .getElementById("next")
+          //   .addEventListener("click", () => rendition.next());
+          // document
+          //   .getElementById("prev")
+          //   .addEventListener("click", () => rendition.prev());
 
-          document.addEventListener("keyup", (e) => {
-            if (e.key === "ArrowRight") rendition.next();
-            if (e.key === "ArrowLeft") rendition.prev();
-          });
+          // document.addEventListener("keyup", (e) => {
+          //   if (e.key === "ArrowRight") rendition.next();
+          //   if (e.key === "ArrowLeft") rendition.prev();
+          // });
         });
 
       rendition.on("relocated", function (location) {
-        console.log(location.end.cfi);
+        // console.log(location.end.cfi);
         localStorage.setItem("epub-location", location.end.cfi);
-        const currentPage = book.locations.percentageFromCfi(
-          location.start.cfi
-        );
-        console.log(currentPage);
-        document.getElementById("page-number").textContent =
-          "Page " + Math.round(currentPage * 100) + "%";
+        // const currentPage = book.locations.percentageFromCfi(
+        //   location.start.cfi
+        // );
+        // console.log(currentPage);
+        // document.getElementById("page-number").textContent =
+        //   "Page " + Math.round(currentPage * 100) + "%";
 
-        console.log(location?.start?.href);
+        // console.log(location?.start?.href);
 
         const tocList = document.getElementById("toc");
         const list = Array.from(tocList.getElementsByTagName("li"));
@@ -408,12 +408,12 @@
         // }
 
         // Hide/show navigation buttons
-        document.getElementById("prev").style.visibility = location.atStart
-          ? "hidden"
-          : "visible";
-        document.getElementById("next").style.visibility = location.atEnd
-          ? "hidden"
-          : "visible";
+        // document.getElementById("prev").style.visibility = location.atStart
+        //   ? "hidden"
+        //   : "visible";
+        // document.getElementById("next").style.visibility = location.atEnd
+        //   ? "hidden"
+        //   : "visible";
       });
 
       book.loaded.navigation.then(function (toc) {
@@ -443,8 +443,23 @@
 
       rendition.on("rendered", function (section) {
         const iframe = document.querySelector("#viewer iframe");
+        console.log(iframe)
         swipeEvent(iframe.contentWindow.document, rendition);
         applyFont();
+
+        $('.container').turn({
+							display: 'single',
+							acceleration: true,
+							gradients: !$.isTouch,
+							elevation:50,
+							when: {
+								turned: function(e, page) {
+									console.log('Current view: ', $(this).turn('view'));
+								}
+							}
+						});
+
+        
         // if (iframe && iframe.contentDocument) {
         //   iframe.contentDocument.body.addEventListener(
         //     "click",
@@ -463,53 +478,53 @@
         // }
       });
 
-      rendition.themes.register("light", {
-        body: {
-          background: "#ffffff",
-          color: "#000000",
-        },
-      });
+      // rendition.themes.register("light", {
+      //   body: {
+      //     background: "#ffffff",
+      //     color: "#000000",
+      //   },
+      // });
 
-      rendition.themes.register("dark", {
-        body: {
-          background: "#1e1e1e",
-          color: "#ffffff",
-        },
-        img: {
-          filter: "brightness(0.8)",
-        },
-      });
+      // rendition.themes.register("dark", {
+      //   body: {
+      //     background: "#1e1e1e",
+      //     color: "#ffffff",
+      //   },
+      //   img: {
+      //     filter: "brightness(0.8)",
+      //   },
+      // });
 
-      const savedTheme = localStorage.getItem("epubTheme") || "light";
-      setTheme(savedTheme);
+      // const savedTheme = localStorage.getItem("epubTheme") || "light";
+      // setTheme(savedTheme);
 
-      function setTheme(mode) {
-        rendition.themes.select(mode);
-        localStorage.setItem("epubTheme", mode);
-        if (localStorage.getItem("epubTheme") == "dark") {
-          document.getElementById("themeToggleBtn").innerHTML =
-            "Switch to light mode";
-        } else {
-          document.getElementById("themeToggleBtn").innerHTML =
-            "Switch to dark mode";
-        }
-      }
+      // function setTheme(mode) {
+      //   rendition.themes.select(mode);
+      //   localStorage.setItem("epubTheme", mode);
+      //   if (localStorage.getItem("epubTheme") == "dark") {
+      //     document.getElementById("themeToggleBtn").innerHTML =
+      //       "Switch to light mode";
+      //   } else {
+      //     document.getElementById("themeToggleBtn").innerHTML =
+      //       "Switch to dark mode";
+      //   }
+      // }
 
-      function toggleTheme() {
-        if (localStorage.getItem("epubTheme") == "dark") {
-          setTheme("light");
-          document.getElementById("themeToggleBtn").innerHTML =
-            "Switch to dark mode";
-        } else {
-          setTheme("dark");
-          document.getElementById("themeToggleBtn").innerHTML =
-            "Switch to light mode";
-        }
-      }
+      // function toggleTheme() {
+      //   if (localStorage.getItem("epubTheme") == "dark") {
+      //     setTheme("light");
+      //     document.getElementById("themeToggleBtn").innerHTML =
+      //       "Switch to dark mode";
+      //   } else {
+      //     setTheme("dark");
+      //     document.getElementById("themeToggleBtn").innerHTML =
+      //       "Switch to light mode";
+      //   }
+      // }
 
-      document.getElementById("close-viewer").addEventListener("click", () => {
-        document.getElementById("image-viewer").style.display = "none";
-      });
+      // document.getElementById("close-viewer").addEventListener("click", () => {
+      //   document.getElementById("image-viewer").style.display = "none";
+      // });
 
       const sidebar = document.getElementById("sidebar");
       const overlay = document.getElementById("sidebar-overlay");
@@ -541,19 +556,19 @@
       });
 
       rendition.on("click", function (event) {
-        const prev = document.getElementById("prev");
-        const next = document.getElementById("next");
-        const pageinfo = document.getElementById("page-info");
+        // const prev = document.getElementById("prev");
+        // const next = document.getElementById("next");
+        // const pageinfo = document.getElementById("page-info");
 
-        if (prev.style.visibility === "hidden") {
-          prev.style.visibility = "visible";
-          next.style.visibility = "visible";
-          pageinfo.style.visibility = "visible";
-        } else {
-          prev.style.visibility = "hidden";
-          next.style.visibility = "hidden";
-          pageinfo.style.visibility = "hidden";
-        }
+        // if (prev.style.visibility === "hidden") {
+        //   prev.style.visibility = "visible";
+        //   next.style.visibility = "visible";
+        //   pageinfo.style.visibility = "visible";
+        // } else {
+        //   prev.style.visibility = "hidden";
+        //   next.style.visibility = "hidden";
+        //   pageinfo.style.visibility = "hidden";
+        // }
 
         // const target = event.target;
         // if (target.tagName === "IMG") {
@@ -671,201 +686,205 @@
       }
 
       // Handle radio button changes
-      document.querySelectorAll('input[name="flowMode"]').forEach((radio) => {
-        radio.addEventListener("change", (event) => {
-          const selectedFlow = event.target.value;
-          localStorage.setItem("flow", selectedFlow);
-          window.location.reload();
-        });
-      });
+      // document.querySelectorAll('input[name="flowMode"]').forEach((radio) => {
+      //   radio.addEventListener("change", (event) => {
+      //     const selectedFlow = event.target.value;
+      //     localStorage.setItem("flow", selectedFlow);
+      //     window.location.reload();
+      //   });
+      // });
 
-      imageZoom();
-      function imageZoom() {
-        const img = document.getElementById("fullscreen-img");
-        const viewer = document.getElementById("image-viewer");
+      // imageZoom();
+      // function imageZoom() {
+      //   const img = document.getElementById("fullscreen-img");
+      //   const viewer = document.getElementById("image-viewer");
 
-        let scale = 1;
-        const minScale = 0.95;
-        const maxScale = 5;
+      //   let scale = 1;
+      //   const minScale = 0.95;
+      //   const maxScale = 5;
 
-        let startX = 0,
-          startY = 0;
-        let currentX = 0,
-          currentY = 0;
-        let isDragging = false;
+      //   let startX = 0,
+      //     startY = 0;
+      //   let currentX = 0,
+      //     currentY = 0;
+      //   let isDragging = false;
 
-        let initialDistance = null;
-        let initialScale = scale;
+      //   let initialDistance = null;
+      //   let initialScale = scale;
 
-        function updateTransform() {
-          img.style.transform = `scale(${scale}) translate(${currentX}px, ${currentY}px)`;
-        }
+      //   function updateTransform() {
+      //     img.style.transform = `scale(${scale}) translate(${currentX}px, ${currentY}px)`;
+      //   }
 
-        function getDistance(touches) {
-          const dx = touches[0].clientX - touches[1].clientX;
-          const dy = touches[0].clientY - touches[1].clientY;
-          return Math.sqrt(dx * dx + dy * dy);
-        }
+      //   function getDistance(touches) {
+      //     const dx = touches[0].clientX - touches[1].clientX;
+      //     const dy = touches[0].clientY - touches[1].clientY;
+      //     return Math.sqrt(dx * dx + dy * dy);
+      //   }
 
-        // Pinch Zoom
-        viewer.addEventListener("touchstart", (e) => {
-          if (e.touches.length === 2) {
-            initialDistance = getDistance(e.touches);
-            initialScale = scale;
-          } else if (e.touches.length === 1 && scale > 1) {
-            isDragging = true;
-            startX = e.touches[0].clientX - currentX;
-            startY = e.touches[0].clientY - currentY;
-          }
-        });
+      //   // Pinch Zoom
+      //   viewer.addEventListener("touchstart", (e) => {
+      //     if (e.touches.length === 2) {
+      //       initialDistance = getDistance(e.touches);
+      //       initialScale = scale;
+      //     } else if (e.touches.length === 1 && scale > 1) {
+      //       isDragging = true;
+      //       startX = e.touches[0].clientX - currentX;
+      //       startY = e.touches[0].clientY - currentY;
+      //     }
+      //   });
 
-        viewer.addEventListener("touchmove", (e) => {
-          if (e.touches.length === 2 && initialDistance) {
-            e.preventDefault();
-            const newDistance = getDistance(e.touches);
-            const zoomFactor = newDistance / initialDistance;
-            scale = Math.min(
-              maxScale,
-              Math.max(minScale, initialScale * zoomFactor)
-            );
-            updateTransform();
-          } else if (e.touches.length === 1 && isDragging) {
-            e.preventDefault();
-            currentX = e.touches[0].clientX - startX;
-            currentY = e.touches[0].clientY - startY;
-            updateTransform();
-          }
-        });
+      //   viewer.addEventListener("touchmove", (e) => {
+      //     if (e.touches.length === 2 && initialDistance) {
+      //       e.preventDefault();
+      //       const newDistance = getDistance(e.touches);
+      //       const zoomFactor = newDistance / initialDistance;
+      //       scale = Math.min(
+      //         maxScale,
+      //         Math.max(minScale, initialScale * zoomFactor)
+      //       );
+      //       updateTransform();
+      //     } else if (e.touches.length === 1 && isDragging) {
+      //       e.preventDefault();
+      //       currentX = e.touches[0].clientX - startX;
+      //       currentY = e.touches[0].clientY - startY;
+      //       updateTransform();
+      //     }
+      //   });
 
-        viewer.addEventListener("touchend", (e) => {
-          if (e.touches.length < 2) {
-            initialDistance = null;
-          }
-          if (e.touches.length === 0) {
-            isDragging = false;
-          }
-        });
+      //   viewer.addEventListener("touchend", (e) => {
+      //     if (e.touches.length < 2) {
+      //       initialDistance = null;
+      //     }
+      //     if (e.touches.length === 0) {
+      //       isDragging = false;
+      //     }
+      //   });
 
-        // Close Button
-        document
-          .getElementById("close-viewer")
-          .addEventListener("click", () => {
-            scale = 1;
-            currentX = 0;
-            currentY = 0;
-            updateTransform();
-            viewer.style.display = "none";
-          });
-      }
+      //   // Close Button
+      //   document
+      //     .getElementById("close-viewer")
+      //     .addEventListener("click", () => {
+      //       scale = 1;
+      //       currentX = 0;
+      //       currentY = 0;
+      //       updateTransform();
+      //       viewer.style.display = "none";
+      //     });
+      // }
 
-      function setCustomFont(fontName) {
-        localStorage.setItem("font", fontName);
-        const viewer = document.querySelector("#viewer iframe");
-        if (viewer) {
-          const doc = viewer.contentDocument;
-          doc.body.style.fontFamily = fontName;
-        }
-      }
+      // function setCustomFont(fontName) {
+      //   localStorage.setItem("font", fontName);
+      //   const viewer = document.querySelector("#viewer iframe");
+      //   if (viewer) {
+      //     const doc = viewer.contentDocument;
+      //     doc.body.style.fontFamily = fontName;
+      //   }
+      // }
 
-      function applyFont() {
-        const font = localStorage.getItem("font") || "Georgia";
-        const viewer = document.querySelector("#viewer iframe");
-        document.getElementById("fontFamily").value = font;
-        if (viewer) {
-          const doc = viewer.contentDocument;
-          doc.body.style.fontFamily = font;
-        }
-      }
+      // function applyFont() {
+      //   const font = localStorage.getItem("font") || "Georgia";
+      //   const viewer = document.querySelector("#viewer iframe");
+      //   document.getElementById("fontFamily").value = font;
+      //   if (viewer) {
+      //     const doc = viewer.contentDocument;
+      //     doc.body.style.fontFamily = font;
+      //   }
+      // }
 
-      async function searchEpubText() {
-        const query = document
-          .getElementById("searchInput")
-          .value.trim()
-          .toLowerCase();
-        const resultsList = document.getElementById("searchResults");
-        resultsList.innerHTML = "";
+      // async function searchEpubText() {
+      //   const query = document
+      //     .getElementById("searchInput")
+      //     .value.trim()
+      //     .toLowerCase();
+      //   const resultsList = document.getElementById("searchResults");
+      //   resultsList.innerHTML = "";
 
-        if (!query) {
-          resultsList.innerHTML = "<li>Please enter a search term.</li>";
-          return;
-        }
+      //   if (!query) {
+      //     resultsList.innerHTML = "<li>Please enter a search term.</li>";
+      //     return;
+      //   }
 
-        const spineItems = book.spine.spineItems;
-        const results = [];
+      //   const spineItems = book.spine.spineItems;
+      //   const results = [];
 
-        for (let i = 0; i < spineItems.length; i++) {
-          const item = spineItems[i];
-          try {
-            await item.load(book.load.bind(book));
-            const doc = item.document; // Get the document object
+      //   for (let i = 0; i < spineItems.length; i++) {
+      //     const item = spineItems[i];
+      //     try {
+      //       await item.load(book.load.bind(book));
+      //       const doc = item.document; // Get the document object
 
-            if (doc) {
-              const text = doc.body.textContent.toLowerCase();
-              if (text.includes(query)) {
-                const excerptStart = text.indexOf(query);
-                const excerpt = text.substring(
-                  excerptStart,
-                  excerptStart + 150
-                );
+      //       if (doc) {
+      //         const text = doc.body.textContent.toLowerCase();
+      //         if (text.includes(query)) {
+      //           const excerptStart = text.indexOf(query);
+      //           const excerpt = text.substring(
+      //             excerptStart,
+      //             excerptStart + 150
+      //           );
 
-                // Find the actual text node inside the DOM
-                const walker = document.createTreeWalker(
-                  doc.body,
-                  NodeFilter.SHOW_TEXT
-                );
-                let node,
-                  offset = 0,
-                  foundNode = null;
-                while ((node = walker.nextNode())) {
-                  const nodeText = node.textContent.toLowerCase();
-                  const matchIndex = nodeText.indexOf(query);
-                  if (matchIndex !== -1) {
-                    foundNode = node;
-                    offset = matchIndex;
-                    break;
-                  }
-                }
+      //           // Find the actual text node inside the DOM
+      //           const walker = document.createTreeWalker(
+      //             doc.body,
+      //             NodeFilter.SHOW_TEXT
+      //           );
+      //           let node,
+      //             offset = 0,
+      //             foundNode = null;
+      //           while ((node = walker.nextNode())) {
+      //             const nodeText = node.textContent.toLowerCase();
+      //             const matchIndex = nodeText.indexOf(query);
+      //             if (matchIndex !== -1) {
+      //               foundNode = node;
+      //               offset = matchIndex;
+      //               break;
+      //             }
+      //           }
 
-                let cfi = null;
-                if (foundNode) {
-                  const range = doc.createRange();
-                  range.setStart(foundNode, offset);
-                  range.setEnd(foundNode, offset + query.length);
-                  cfi = item.cfiFromRange(range);
-                }
+      //           let cfi = null;
+      //           if (foundNode) {
+      //             const range = doc.createRange();
+      //             range.setStart(foundNode, offset);
+      //             range.setEnd(foundNode, offset + query.length);
+      //             cfi = item.cfiFromRange(range);
+      //           }
 
-                results.push({
-                  href: item.href,
-                  excerpt,
-                  cfi: cfi,
-                });
-              }
-            }
+      //           results.push({
+      //             href: item.href,
+      //             excerpt,
+      //             cfi: cfi,
+      //           });
+      //         }
+      //       }
 
-            item.unload(); // Unload to free memory
-          } catch (err) {
-            console.error(`Error reading spine item ${i}:`, err);
-          }
-        }
+      //       item.unload(); // Unload to free memory
+      //     } catch (err) {
+      //       console.error(`Error reading spine item ${i}:`, err);
+      //     }
+      //   }
 
-        if (results.length === 0) {
-          resultsList.innerHTML = "<li>No matches found.</li>";
-          return;
-        }
+      //   if (results.length === 0) {
+      //     resultsList.innerHTML = "<li>No matches found.</li>";
+      //     return;
+      //   }
 
-        // Show search results
-        results.forEach((result, index) => {
-          const li = document.createElement("li");
-          li.className = "cursor-pointer hover:underline text-blue-600";
-          li.textContent = `Match ${index + 1}: ${result.excerpt}...`;
-          li.onclick = () => {
-            console.log(result);
-            // let cfi = `epubcfi(${result.cfi}`;
-            rendition.display(result.cfi);
-          };
-          resultsList.appendChild(li);
-        });
-      }
+      //   // Show search results
+      //   results.forEach((result, index) => {
+      //     const li = document.createElement("li");
+      //     li.className = "cursor-pointer hover:underline text-blue-600";
+      //     li.textContent = `Match ${index + 1}: ${result.excerpt}...`;
+      //     li.onclick = () => {
+      //       console.log(result);
+      //       // let cfi = `epubcfi(${result.cfi}`;
+      //       rendition.display(result.cfi);
+      //     };
+      //     resultsList.appendChild(li);
+      //   });
+      // }
+
+
+
+
     </script>
   </body>
 </html>

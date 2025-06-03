@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Book Reader</title>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="./epub.js"></script>
+    <script src="./turn.js"></script>
+
+    <script src="./turn.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0px 0px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background-color: #fff;
+      }
+
+      #viewer {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      id="loader"
+      class="fixed inset-0 flex items-center justify-center bg-white z-50"
+    >
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-solid"
+      ></div>
+    </div>
+    <div
+      id="viewer"
+      class="transition-opacity duration-300 ease-in-out opacity-100"
+    ></div>
+
+    <div
+      id="hover-zone"
+      class="fixed top-0 left-0 h-full w-5 z-[1002] cursor-pointer"
+    ></div>
+
+    <!-- Sidebar -->
+    <div
+      id="sidebar"
+      class="fixed top-0 left-0 h-full w-64 bg-white p-4 shadow-lg transform -translate-x-full transition-transform duration-300 z-[1001] space-y-4 overflow-auto"
+    >
+      <div class="mt-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+          📘 Table of Contents
+        </h3>
+        <ul id="toc" class="text-sm space-y-2 max-h-[80vh] overflow-auto"></ul>
+      </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div
+      id="sidebar-overlay"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 z-[1000]"
+    ></div>
+
+    <script>
+      const loader = document.getElementById("loader");
+      loader.style.display = "flex";
+
+      var book = ePub("http://192.168.10.12/kanji-prac/epub/ImageOnly.epub");
+      const rendition = book.renderTo("viewer", {
+        flow: "paginated",
+        width: "100%",
+        height: "100%",
+        spread: "none",
+        manager: "default",
+      });
+
+      let currentFontSize = parseInt(
+        localStorage.getItem("currentFontSize") || 100
+      );
+
+      rendition.themes.fontSize(currentFontSize + "%");
+
+      book.ready
+        .then((book) => {
+          return this.book.locations.generate();
+        })
+        .then((locations) => {
+          loader.style.display = "none";
+          // console.log("Total Pages?: ", locations.length);
+          const saved = localStorage.getItem("epub-location");
+
+          if (saved) {
+            rendition.display(saved);
+          } else {
+            rendition.display();
+          }
+        });
+
+      rendition.on("relocated", function (location) {
+        localStorage.setItem("epub-location", location.end.cfi);
+
+        const tocList = document.getElementById("toc");
+        const list = Array.from(tocList.getElementsByTagName("li"));
+        list.forEach((i, k) => {
+          i.classList = "p-2 rounded cursor-pointer";
+
+          if (location?.start?.index == k) {
+            i.classList = "bg-gray-100 p-2 rounded cursor-pointer";
+          }
+          console.log(i);
+        });
+      });
+
+      book.loaded.navigation.then(function (toc) {
+        const tocList = document.getElementById("toc");
+        toc.forEach(function (chapter) {
+          const li = document.createElement("li");
+          li.className = "p-2 rounded cursor-pointer";
+          li.textContent = chapter.label;
+          li.setAttribute("data-href", chapter.href);
+          li.onclick = () => {
+            rendition.display(chapter.href);
+            localStorage.setItem("currentChapter", chapter.href);
+
+            const list = Array.from(tocList.getElementsByTagName("li"));
+            list.forEach((i) => {
+              i.classList = "p-2 rounded cursor-pointer";
+              console.log(i);
+            });
+            li.className = "bg-gray-100 p-2 rounded cursor-pointer";
+          };
+          if (chapter.href == localStorage.getItem("currentChapter")) {
+            li.className = "bg-gray-100 p-2 rounded cursor-pointer";
+          }
+          tocList.appendChild(li);
+        });
+      });
+
+      rendition.on("rendered", function (section) {
+        const iframe = document.querySelector("#viewer iframe");
+
+        // if (iframe && iframe.contentDocument && iframe.contentDocument.head) {
+        //   const scriptSources = [
+        //     "https://code.jquery.com/jquery-2.1.4.min.js",
+        //     "http://192.168.10.12/kanji-prac/turn.js",
+        //     "http://192.168.10.12/kanji-prac/turn.min.js",
+        //   ];
+
+        //   scriptSources.forEach((src, index) => {
+        //     const script = iframe.contentDocument.createElement("script");
+        //     script.type = "text/javascript";
+        //     script.src = src;
+        //     script.defer = true;
+        //     script.id = `injected-script-${index}`;
+        //     iframe.contentDocument.head.appendChild(script);
+        //   });
+        // }
+
+        // console.log(iframe)
+        swipeEvent(iframe.contentWindow.document, rendition);
+        // iframe.contentWindow.document.body.setAttribute("id", "flipbook");
+        // setTimeout(() => {
+        //   $("#flipbook").turn({
+        //   autoCenter: true,
+        // });
+        // }, 1000);
+      });
+
+      // const sidebar = document.getElementById("sidebar");
+      // const overlay = document.getElementById("sidebar-overlay");
+      // const hoverZone = document.getElementById("hover-zone");
+
+      // hoverZone.addEventListener("touchstart", () => {
+      //   sidebar.classList.remove("-translate-x-full");
+      //   overlay.classList.remove("hidden");
+      // });
+
+      // function closeSidebar() {
+      //   sidebar.classList.add("-translate-x-full");
+      //   overlay.classList.add("hidden");
+      // }
+
+      // overlay.addEventListener("click", closeSidebar);
+
+      // document.addEventListener("click", (event) => {
+      //   if (
+      //     !sidebar.contains(event.target) &&
+      //     !hoverZone.contains(event.target)
+      //   ) {
+      //     closeSidebar();
+      //   }
+      // });
+
+      rendition.on("click", function (event) {});
+
+      window.addEventListener("unload", function () {
+        console.log("unloading");
+        this.book.destroy();
+      });
+
+      function swipeEvent(body, rendition) {
+        function fadeAndTurnPage(direction) {
+          const viewer = document.getElementById("viewer");
+
+          // Fade out
+          viewer.classList.remove("opacity-100");
+          viewer.classList.add("opacity-0");
+
+          // Wait for fade out to complete, then turn page and fade in
+          // setTimeout(() => {
+          if (direction === "left") {
+            rendition.next();
+          } else if (direction === "right") {
+            rendition.prev();
+          }
+
+          // Fade in
+          viewer.classList.remove("opacity-0");
+          viewer.classList.add("opacity-100");
+          // }, 0); // match Tailwind `duration-300`
+        }
+
+        body.addEventListener("touchstart", handleTouchStart, false);
+        body.addEventListener("touchend", handleTouchEnd, false);
+
+        let xDown = null;
+        let yDown = null;
+
+        function handleTouchStart(evt) {
+          xDown = evt.touches[0].clientX;
+          yDown = evt.touches[0].clientY;
+        }
+
+        function handleTouchEnd(evt) {
+          if (!xDown || !yDown) return;
+
+          const xUp = evt.changedTouches[0].clientX;
+          const yUp = evt.changedTouches[0].clientY;
+
+          const dx = xUp - xDown;
+          const dy = yUp - yDown;
+
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 50) {
+              console.log("Swiped right");
+              fadeAndTurnPage("right");
+            } else if (dx < -50) {
+              console.log("Swiped left");
+              fadeAndTurnPage("left");
+            }
+          }
+
+          xDown = null;
+          yDown = null;
+        }
+      }
+    </script>
+  </body>
+</html>
