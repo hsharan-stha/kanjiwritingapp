@@ -1,5 +1,7 @@
 
-
+body{
+  overflow: hidden;
+}
 .container{
   height:100%;
   width:100%;
@@ -10,4 +12,90 @@
   max-height: inherit !important;
   height: inherit !important;
   width: inherit !important;
+}
+
+.pagination-container {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  border-top: 1px solid #e5e7eb;
+  z-index: 1111;
+}
+
+.pagination-desktop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0px 20px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background-color: white;
+  color: #374151;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.pagination-btn:hover {
+  background-color: #f9fafb;
+}
+
+.pagination-info p {
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-arrow {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: black;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.pagination-arrow:hover {
+  background-color: #f9fafb;
+}
+
+.pagination-select {
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #111827;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  appearance: none;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.hidden {
+  display: none;
+}
+
+#bookmark div{
+  height: 24px;
+  width: 24px;
+position: absolute;
+z-index: 1111;
+top: 10px;
+right: 10px
 }
