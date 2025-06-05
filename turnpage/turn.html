@@ -13,7 +13,7 @@
   </head>
   <body>
     <div id="bookmark" class="hidden">
-      <div id="unmark">
+      <div id="unmark" class="hidden">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -29,7 +29,7 @@
           />
         </svg>
       </div>
-      <div id="mark">
+      <div id="mark" class="hidden">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -322,7 +322,7 @@
 
       <div class="container">
         <img alt="Image" src="./images/070.jpg" />
-      </div> 
+      </div>
       <div class="container">
         <img alt="Image" src="./images/071.jpg" />
       </div>
@@ -586,13 +586,26 @@
       <div class="container">
         <img alt="Image" src="./images/138.jpg" />
       </div>
-      
     </div>
 
     <div id="pagination" class="pagination-container hidden">
       <div class="pagination-desktop">
         <div class="pagination-info">
           <p>
+            
+              <svg id="bookmarkBtn" width="24" height="24"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="size-6"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3H6Zm1.5 1.5a.75.75 0 0 0-.75.75V16.5a.75.75 0 0 0 1.085.67L12 15.089l4.165 2.083a.75.75 0 0 0 1.085-.671V5.25a.75.75 0 0 0-.75-.75h-9Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            
             Showing <span id="currentPage" class="font-medium">1</span> of
             <span id="pages" class="font-medium">97</span> results
           </p>
@@ -611,6 +624,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Hover Zone (small invisible strip on left edge) -->
+    <!-- <div id="hover-zone" class="hover-zone"></div> -->
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar">
+      <div class="toc-wrapper">
+        <h3 class="toc-title">BookMarks</h3>
+        <ul id="toc" class="toc-list"></ul>
+      </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
   </body>
   <script type="text/javascript">
     let display =
@@ -636,6 +663,8 @@
       document.getElementById("pageInput").value = page;
 
       refreshSelect(page);
+
+      toggleBookmark();
     });
 
     window.addEventListener("orientationchange", function ($event) {
@@ -749,6 +778,9 @@
 
       controls.classList.toggle("hidden");
       bookmarks.classList.toggle("hidden");
+
+      console.log(bookmarks.firstElementChild, bookmarks.lastElementChild);
+      toggleBookmark();
     });
 
     document.getElementById("backPage").addEventListener("click", function () {
@@ -770,19 +802,138 @@
       }, 10);
     }
 
-    document.getElementById("bookmark").addEventListener("click", function () {
-      console.log(localStorage.getItem("currentPage"));
-      const pageSelector = `[page="${localStorage.getItem("currentPage")}"]`;
-      const $page = $("#flipbook").find(pageSelector);
-      const $img = $page.find("img").first(); // gets first image on the page
+    let bookmarksArray = [];
+    if (localStorage.getItem("bookmarks")) {
+      bookmarksArray = JSON.parse(localStorage.getItem("bookmarks"));
+      loadBookMark();
+    }
 
-      console.log("Page content:");
-      // Tesseract.recognize(
-      //   $($img)[0],
-      //   "jpn" // language
-      // ).then(({ data: { text } }) => {
-      //   console.log(text.slice(0,50));
-      // });
+    document
+      .getElementById("mark")
+      .addEventListener("click", function ($event) {
+        const currentPage = localStorage.getItem("currentPage");
+        bookmarksArray = bookmarksArray.filter((i) => i?.page != currentPage);
+        localStorage.setItem("bookmarks", JSON.stringify(bookmarksArray));
+
+        toggleBookmark();
+      });
+    document
+      .getElementById("unmark")
+      .addEventListener("click", function ($event) {
+        const currentPage = localStorage.getItem("currentPage");
+        const pageSelector = `[page="${localStorage.getItem("currentPage")}"]`;
+        const $page = $("#flipbook").find(pageSelector);
+        const $img = $page.find("img").first(); // gets first image on the page
+
+        console.log($img.attr("src"));
+        if (!bookmarksArray.some((i) => i?.page == currentPage)) {
+          bookmarksArray.push({
+            page: currentPage,
+            detail: $img.attr("src"),
+          });
+
+          toggleBookmark();
+        }
+
+        localStorage.setItem("bookmarks", JSON.stringify(bookmarksArray));
+
+        // Tesseract.recognize(
+        //   $($img)[0],
+        //   "jpn" // language
+        // ).then(({ data: { text } }) => {
+        //   console.log(text.slice(0,50));
+        // });
+      });
+
+    function toggleBookmark() {
+      const bookmarks = document.getElementById("bookmark");
+      console.log(isBookmark());
+      if (isBookmark()) {
+        bookmarks.lastElementChild.classList.remove("hidden");
+        bookmarks.firstElementChild.classList.add("hidden");
+      } else {
+        bookmarks.firstElementChild.classList.remove("hidden");
+        bookmarks.lastElementChild.classList.add("hidden");
+      }
+      loadBookMark();
+    }
+    function loadBookMark() {
+      const tocList = document.getElementById("toc");
+      tocList.innerHTML = "";
+
+      bookmarksArray.forEach((item) => {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.gap = "8px";
+        li.style.marginBottom = "8px";
+
+        const img = document.createElement("img");
+        img.src = item?.detail;
+        img.alt = `Avatar for page ${item?.page}`;
+        img.style.width = "32px";
+        img.style.height = "32px";
+        img.style.borderRadius = "50%";
+        img.style.objectFit = "cover";
+
+        const span = document.createElement("span");
+        span.textContent = `Page ${item?.page}`;
+
+        const svgBookmark = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#4A5568" viewBox="0 0 24 24">
+    <path d="M6 2C4.895 2 4 2.895 4 4v18l8-4 8 4V4c0-1.105-.895-2-2-2H6z"/>
+  </svg>
+`;
+
+        // Icon
+        const iconWrapper = document.createElement("span");
+        iconWrapper.innerHTML = svgBookmark;
+
+        li.appendChild(img);
+        li.appendChild(span);
+        li.appendChild(iconWrapper);
+        // li.textContent = `Page ${item?.page}`;
+        li.onclick = () => {
+          console.log(item);
+          $("#flipbook").turn("page", item?.page);
+        };
+        tocList.appendChild(li);
+      });
+    }
+    function isBookmark() {
+      const currentPage = localStorage.getItem("currentPage");
+      if (localStorage.getItem("bookmarks")) {
+        const bookmarks = JSON.parse(localStorage.getItem("bookmarks"));
+        return bookmarksArray.some((i) => i?.page == currentPage);
+      }
+
+      return false;
+    }
+
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    const hoverZone = document.getElementById("bookmarkBtn");
+
+    hoverZone.addEventListener("touchstart", () => {
+      sidebar.style.transform = "unset";
+      overlay.style.display = "flex";
+      loadBookMark()
+    });
+
+    function closeSidebar() {
+      sidebar.style.transform = "translateX(-100%)";
+      overlay.style.display = "none";
+    }
+
+    overlay.addEventListener("click", closeSidebar);
+
+    document.addEventListener("click", (event) => {
+      if (
+        !sidebar.contains(event.target) &&
+        !hoverZone.contains(event.target)
+      ) {
+        closeSidebar();
+      }
     });
   </script>
 </html>
