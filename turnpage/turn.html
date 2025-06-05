@@ -992,6 +992,7 @@
         localStorage.setItem("bookmarks", JSON.stringify(bookmarksArray));
 
         toggleBookmark();
+         loadBookMark();
       });
     document
       .getElementById("unmark")
@@ -1009,6 +1010,7 @@
           });
 
           toggleBookmark();
+           loadBookMark();
         }
 
         localStorage.setItem("bookmarks", JSON.stringify(bookmarksArray));
@@ -1031,7 +1033,7 @@
         bookmarks.firstElementChild.classList.remove("hidden");
         bookmarks.lastElementChild.classList.add("hidden");
       }
-      loadBookMark();
+     
     }
     function loadBookMark() {
       const tocList = document.getElementById("toc");
@@ -1043,6 +1045,7 @@
         li.style.alignItems = "center";
         li.style.gap = "8px";
         li.style.marginBottom = "8px";
+        li.className="toc-item"
 
         const img = document.createElement("img");
         img.src = item?.detail;
@@ -1053,6 +1056,7 @@
         img.style.objectFit = "cover";
 
         const span = document.createElement("span");
+        span.className="detail"
         span.textContent = `Page ${item?.page}`;
 
         const svgBookmark = `
@@ -1090,10 +1094,10 @@
     const overlay = document.getElementById("sidebar-overlay");
     const hoverZone = document.getElementById("bookmarkBtn");
 
-    hoverZone.addEventListener("touchstart", () => {
+    hoverZone.addEventListener("click", () => {
       sidebar.style.transform = "unset";
       overlay.style.display = "flex";
-      loadBookMark()
+      // loadBookMark()
     });
 
     function closeSidebar() {
