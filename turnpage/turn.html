@@ -768,20 +768,22 @@
       <div class="pagination-desktop">
         <div class="pagination-info">
           <p>
-            
-              <svg id="bookmarkBtn" width="24" height="24"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="size-6"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3H6Zm1.5 1.5a.75.75 0 0 0-.75.75V16.5a.75.75 0 0 0 1.085.67L12 15.089l4.165 2.083a.75.75 0 0 0 1.085-.671V5.25a.75.75 0 0 0-.75-.75h-9Z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-            
+            <svg
+              id="bookmarkBtn"
+              width="24"
+              height="24"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="size-6"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3H6Zm1.5 1.5a.75.75 0 0 0-.75.75V16.5a.75.75 0 0 0 1.085.67L12 15.089l4.165 2.083a.75.75 0 0 0 1.085-.671V5.25a.75.75 0 0 0-.75-.75h-9Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+
             Showing <span id="currentPage" class="font-medium">1</span> of
             <span id="pages" class="font-medium">97</span> results
           </p>
@@ -831,6 +833,10 @@
     document.getElementById("pages").innerText = totalPages;
     const pageWhileLoaded = $("#flipbook").turn("page");
     document.getElementById("currentPage").innerText = pageWhileLoaded;
+
+    if (!localStorage.getItem("currentPage")) {
+      localStorage.setItem("currentPage", 1);
+    }
 
     $("#flipbook").bind("turned", function (event, page) {
       localStorage.setItem("currentPage", page);
@@ -962,8 +968,8 @@
     document.getElementById("backPage").addEventListener("click", function () {
       $("#flipbook").turn("page", localStorage.getItem("currentPageHistory"));
       refreshSelect(localStorage.getItem("currentPageHistory"));
-      // document.getElementById("backPage").style.display = "none";
-      // localStorage.removeItem("currentPageHistory");
+      document.getElementById("backPage").style.display = "none";
+      localStorage.removeItem("currentPageHistory");
     });
 
     function refreshSelect(page) {
@@ -992,7 +998,7 @@
         localStorage.setItem("bookmarks", JSON.stringify(bookmarksArray));
 
         toggleBookmark();
-         loadBookMark();
+        loadBookMark();
       });
     document
       .getElementById("unmark")
@@ -1008,13 +1014,12 @@
             page: currentPage,
             detail: $img.attr("src"),
           });
-
-          toggleBookmark();
-           loadBookMark();
         }
 
         localStorage.setItem("bookmarks", JSON.stringify(bookmarksArray));
 
+        toggleBookmark();
+        loadBookMark();
         // Tesseract.recognize(
         //   $($img)[0],
         //   "jpn" // language
@@ -1033,11 +1038,21 @@
         bookmarks.firstElementChild.classList.remove("hidden");
         bookmarks.lastElementChild.classList.add("hidden");
       }
-     
     }
     function loadBookMark() {
       const tocList = document.getElementById("toc");
       tocList.innerHTML = "";
+
+      if (bookmarksArray.length == 0) {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.gap = "8px";
+        li.style.marginBottom = "8px";
+        li.className = "toc-item";
+        li.textContent = "No data to display";
+        tocList.appendChild(li);
+      }
 
       bookmarksArray.forEach((item) => {
         const li = document.createElement("li");
@@ -1045,7 +1060,7 @@
         li.style.alignItems = "center";
         li.style.gap = "8px";
         li.style.marginBottom = "8px";
-        li.className="toc-item"
+        li.className = "toc-item";
 
         const img = document.createElement("img");
         img.src = item?.detail;
@@ -1056,7 +1071,7 @@
         img.style.objectFit = "cover";
 
         const span = document.createElement("span");
-        span.className="detail"
+        span.className = "detail";
         span.textContent = `Page ${item?.page}`;
 
         const svgBookmark = `
@@ -1097,7 +1112,7 @@
     hoverZone.addEventListener("click", () => {
       sidebar.style.transform = "unset";
       overlay.style.display = "flex";
-      // loadBookMark()
+      loadBookMark();
     });
 
     function closeSidebar() {
