@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Eraser & Export Tool</title>
+    <style>
+      canvas {
+        border: 1px solid white;
+        cursor: crosshair;
+        display: block;
+        margin-bottom: 10px;
+      }
+      #controls {
+        margin: 10px 0;
+      }
+      #imageWrapper {
+        display: flex;
+        gap: 20px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .imageControls {
+        text-align: center;
+        margin-top: 5px;
+        width: fit-content;
+      }
+      .canvas-container {
+        width: 100%; /* Limit width to screen */
+        overflow-x: auto; /* Enable horizontal scroll */
+        overflow-y: hidden; /* Disable vertical scroll */
+        white-space: nowrap; /* Prevent wrapping */
+        border: 1px solid #ccc;
+      }
+      canvas {
+        display: inline-block; /* Stay inline to scroll horizontally */
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Upload image and draw line. Set thickness and click erase.</h3>
+
+    <label>
+      Number of image copies:
+      <input type="number" id="copyCount" value="4" min="1" max="30" />
+    </label>
+    <br /><br />
+
+    <!-- <input type="file" id="imageUploader" /> -->
+    <label>
+      Enter Text:
+      <input type="text" id="textInput" placeholder="Enter your text" />
+    </label>
+    <button id="generateTextImage">Generate Text Image</button>
+
+    <label style="margin-left: 20px">
+      <input type="checkbox" id="eraserMode" /> Enable Eraser Tool
+    </label>
+    <label style="margin-left: 20px" for="eraserThickness"
+      >Eraser Thickness:</label
+    >
+    <input type="number" id="eraserThickness" min="1" max="100" value="30" />
+    <div id="controls">
+      <button onclick="resetPolygon()">Reset Line</button>
+      <button onclick="undoEraser()">Undo Erase</button>
+      <button onclick="downloadJPEG()">Download as JPEG</button>
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="canvas" width="2000" height="500"></canvas>
+    </div>
+    <div id="imageWrapper"></div>
+    <canvas id="playbackCanvas" style="display: none"></canvas>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const copyCountInput = document.getElementById("copyCount");
+      const imageWrapper = document.getElementById("imageWrapper");
+      const eraserModeCheckbox = document.getElementById("eraserMode");
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "e" || e.key === "E") {
+          const eraserCheckbox = document.getElementById("eraserMode");
+          eraserCheckbox.checked = !eraserCheckbox.checked;
+
+          // Optional: Show a visual indicator
+          console.log("Eraser mode:", eraserCheckbox.checked ? "ON" : "OFF");
+        }
+      });
+
+      let img = new Image();
+      let imageCount = 4;
+      let spacing = 80;
+      let imageWidth = 0;
+      let imageHeight = 0;
+      let currentPolygon = [];
+      const imageCanvases = [];
+      let isDrawing = false;
+      const originalImageData = []; // store original images
+      let fileName = "";
+      const eraserHistory = []; // Stores undo steps
+
+      function resetImage(index) {
+        const ctx = imageCanvases[index].getContext("2d");
+        ctx.putImageData(originalImageData[index], 0, 0);
+        drawAllImages();
+      }
+
+      document
+        .getElementById("generateTextImage")
+        .addEventListener("click", () => {
+          const text = document.getElementById("textInput").value.trim();
+          if (!text) return alert("Please enter some text.");
+
+          fileName = `${text}.png`;
+
+          imageCount = parseInt(copyCountInput.value) || 1;
+
+          // Set default dimensions
+          imageWidth = 400;
+          imageHeight = 500;
+          canvas.width = (imageWidth + spacing) * imageCount;
+          canvas.height = imageHeight;
+
+          // Reset previous data
+          imageCanvases.length = 0;
+          originalImageData.length = 0;
+
+          for (let i = 0; i < imageCount; i++) {
+            const offCanvas = document.createElement("canvas");
+            offCanvas.width = imageWidth;
+            offCanvas.height = imageHeight;
+            const offCtx = offCanvas.getContext("2d");
+
+            // Fill white background
+            offCtx.fillStyle = "white";
+            offCtx.fillRect(0, 0, imageWidth, imageHeight);
+
+            // Draw text
+            offCtx.fillStyle = "black";
+            offCtx.font = "400px 'HGP教科書体'";
+            
+            offCtx.textAlign = "center";
+            offCtx.textBaseline = "middle";
+            offCtx.fillText(text, imageWidth / 2, imageHeight / 2);
+
+            imageCanvases.push(offCanvas);
+            originalImageData.push(
+              offCtx.getImageData(0, 0, imageWidth, imageHeight)
+            );
+          }
+
+          drawAllImages();
+          createEraseButtons();
+        });
+
+      function drawAllImages() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < imageCount; i++) {
+          ctx.drawImage(imageCanvases[i], i * (imageWidth + spacing), 0);
+        }
+        drawPolygon(currentPolygon);
+      }
+
+      function createEraseButtons() {
+        imageWrapper.innerHTML = "";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "imageControls";
+        wrapper.style.marginBottom = "10px";
+
+        // Dropdown to select image index
+        const select = document.createElement("select");
+        for (let i = 0; i < imageCount; i++) {
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = `Image ${i + 1}`;
+          select.appendChild(option);
+        }
+        select.title = "Select image index";
+        select.id = "image-index";
+
+        // Label for selected image
+        const label = document.createElement("span");
+        label.textContent = "Image 1";
+        label.style.marginLeft = "10px";
+        label.style.fontWeight = "bold";
+        label.id = "image-index-label";
+
+        select.addEventListener("change", () => {
+          const selectedIndex = parseInt(select.value);
+          label.textContent = `Image ${selectedIndex + 1}`;
+          eraseBtn.disabled = selectedIndex === 0;
+        //   copyBtn.disabled = selectedIndex === 0;
+        });
+
+        // Thickness input
+        const thicknessInput = document.createElement("input");
+        thicknessInput.type = "number";
+        thicknessInput.value = 30;
+        thicknessInput.min = 1;
+        thicknessInput.style.marginLeft = "10px";
+        thicknessInput.title = "Set thickness";
+
+        // Erase button
+        const eraseBtn = document.createElement("button");
+        eraseBtn.textContent = "Erase Polygon";
+        eraseBtn.style.marginLeft = "10px";
+        eraseBtn.disabled = true;
+        eraseBtn.id = "erase-button";
+        eraseBtn.addEventListener("click", () => {
+          const selectedIndex = parseInt(select.value);
+          const thickness = parseInt(thicknessInput.value) || 30;
+          if (currentPolygon.length >= 2) {
+            eraseOutsideLine(currentPolygon, selectedIndex, thickness);
+            currentPolygon = [];
+            drawAllImages();
+            if (selectedIndex > 1) {
+              copyFromPreviousImage(selectedIndex);
+            }
+          } else {
+            alert("Draw a line with at least 2 points.");
+          }
+        });
+
+        // Copy from previous button
+        // const copyBtn = document.createElement("button");
+        // copyBtn.textContent = "Copy Previous";
+        // copyBtn.style.marginLeft = "10px";
+        // copyBtn.disabled = true;
+        // copyBtn.id = "copy-button";
+        // copyBtn.addEventListener("click", () => {
+        //   const selectedIndex = parseInt(select.value);
+        //   if (selectedIndex > 0) {
+        //     copyFromPreviousImage(selectedIndex);
+        //   }
+        // });
+
+        // Reset Button
+        const resetBtn = document.createElement("button");
+        resetBtn.textContent = "Reset Eraser";
+        resetBtn.style.marginLeft = "10px";
+        resetBtn.disabled = false;
+        resetBtn.addEventListener("click", () => {
+          const selectedIndex = parseInt(select.value);
+          resetImage(selectedIndex);
+        });
+
+        // Append all controls
+        wrapper.appendChild(select);
+        wrapper.appendChild(label);
+        wrapper.appendChild(thicknessInput);
+        wrapper.appendChild(eraseBtn);
+        // wrapper.appendChild(copyBtn);
+        imageWrapper.appendChild(wrapper);
+        wrapper.appendChild(resetBtn);
+      }
+
+      canvas.addEventListener("mousedown", (e) => {
+        if (eraserModeCheckbox.checked) return;
+        isDrawing = true;
+        // currentPolygon = [];
+        addFreehandPoint(e);
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (eraserModeCheckbox.checked || !isDrawing) return;
+        addFreehandPoint(e);
+      });
+
+      canvas.addEventListener("mouseup", () => {
+        if (!eraserModeCheckbox.checked) {
+          isDrawing = false;
+          // alert("Now click 'Erase Polygon' below the image to apply.");
+        }
+      });
+
+      function addFreehandPoint(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        let select = document.getElementById("image-index");
+        let label = document.getElementById("image-index-label");
+        let eraseBtn = document.getElementById("erase-button");
+        // let copyBtn = document.getElementById("copy-button");
+
+        selectedIndex = parseInt(x / (imageWidth + spacing));
+        select.value = selectedIndex;
+        label.textContent = `Image ${selectedIndex + 1}`;
+        eraseBtn.disabled = selectedIndex === 0;
+        // copyBtn.disabled = selectedIndex === 0;
+
+        currentPolygon.push({ x, y });
+        drawAllImages();
+      }
+
+      function resetPolygon() {
+        currentPolygon = [];
+        drawAllImages();
+      }
+
+      function drawPolygon(points) {
+        if (points.length < 1) return;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.closePath();
+      }
+
+      function eraseOutsideLine(points, index, thickness) {
+        const offCanvas = imageCanvases[index];
+        const offCtx = offCanvas.getContext("2d");
+
+        // ✅ Fill white background before any operation
+        const originalImage = offCtx.getImageData(
+          0,
+          0,
+          imageWidth,
+          imageHeight
+        );
+        offCtx.clearRect(0, 0, imageWidth, imageHeight);
+        offCtx.fillStyle = "white";
+        offCtx.fillRect(0, 0, imageWidth, imageHeight);
+        offCtx.putImageData(originalImage, 0, 0);
+
+        const relativePoints = points.map((p) => ({
+          x: p.x - index * (imageWidth + spacing),
+          y: p.y,
+        }));
+
+        const pathCanvas = document.createElement("canvas");
+        pathCanvas.width = imageWidth;
+        pathCanvas.height = imageHeight;
+        const pathCtx = pathCanvas.getContext("2d");
+
+        pathCtx.lineJoin = "round";
+        pathCtx.lineCap = "round";
+        pathCtx.lineWidth = thickness * 2;
+        pathCtx.strokeStyle = "white";
+        pathCtx.fillStyle = "white";
+
+        pathCtx.beginPath();
+        pathCtx.moveTo(relativePoints[0].x, relativePoints[0].y);
+        for (let i = 1; i < relativePoints.length; i++) {
+          pathCtx.lineTo(relativePoints[i].x, relativePoints[i].y);
+        }
+        pathCtx.stroke();
+
+        const maskImage = pathCtx.getImageData(
+          0,
+          0,
+          imageWidth,
+          imageHeight
+        ).data;
+        const imageData = offCtx.getImageData(0, 0, imageWidth, imageHeight);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const alpha = maskImage[i + 3];
+          if (alpha === 0) {
+            data[i + 3] = 0; // A
+          }
+        }
+
+        offCtx.putImageData(imageData, 0, 0);
+      }
+
+      canvas.addEventListener("mousedown", (e) => {
+        if (!eraserModeCheckbox.checked) return;
+        isDrawing = true;
+        updateEraser(e);
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (!eraserModeCheckbox.checked || !isDrawing) return;
+        updateEraser(e);
+      });
+
+      canvas.addEventListener("mouseup", () => {
+        isDrawing = false;
+      });
+
+      function updateEraser(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const index = Math.floor(x / (imageWidth + spacing));
+        if (index < 0 || index >= imageCanvases.length) return;
+
+        const eraserThickness = parseInt(
+          document.getElementById("eraserThickness").value
+        );
+        const relativeX = x - index * (imageWidth + spacing);
+        const offCtx = imageCanvases[index].getContext("2d");
+
+        // Backup before erasing
+        const backup = offCtx.getImageData(
+          relativeX - eraserThickness / 2,
+          y - eraserThickness / 2,
+          eraserThickness,
+          eraserThickness+1
+        );
+
+        eraserHistory.push({
+          index,
+          x: relativeX - eraserThickness / 2,
+          y: y - eraserThickness / 2,
+          width: eraserThickness,
+          height: eraserThickness,
+          imageData: backup,
+        });
+console.log(eraserHistory)
+        // Erase the area
+        offCtx.clearRect(
+          relativeX - eraserThickness / 2,
+          y - eraserThickness / 2,
+          eraserThickness,
+          eraserThickness
+        );
+
+        drawAllImages();
+      }
+
+      function undoEraser() {
+        console.log(eraserHistory)
+        if (eraserHistory.length === 0) return;
+
+        const last = eraserHistory.pop();
+        const offCtx = imageCanvases[last.index].getContext("2d");
+
+        offCtx.putImageData(last.imageData, last.x, last.y);
+
+        drawAllImages();
+      }
+
+      function downloadJPEG() {
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = 200 + (imageWidth + spacing) * imageCount;
+        exportCanvas.height = imageHeight;
+        const exportCtx = exportCanvas.getContext("2d");
+
+        exportCtx.fillStyle = "#ffffff";
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        exportCtx.drawImage(imageCanvases[0], 0, 0);
+        for (let i = 1; i < imageCanvases.length; i++) {
+          exportCtx.drawImage(
+            imageCanvases[i],
+            i * (imageWidth + spacing) + 200,
+            0
+          );
+        }
+
+        const link = document.createElement("a");
+        link.download = fileName;
+        link.href = exportCanvas.toDataURL("image/jpeg", 1.0);
+        link.click();
+      }
+
+      function downloadJPEGs() {
+        // Export combined canvas
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = (imageWidth + spacing) * imageCount;
+        exportCanvas.height = imageHeight;
+        const exportCtx = exportCanvas.getContext("2d");
+
+        // Fill white background
+        exportCtx.fillStyle = "#ffffff";
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        for (let i = 0; i < imageCanvases.length; i++) {
+          exportCtx.drawImage(imageCanvases[i], i * (imageWidth + spacing), 0);
+        }
+
+        // Download combined image
+        const combinedLink = document.createElement("a");
+        combinedLink.download = "combined.jpg";
+        combinedLink.href = exportCanvas.toDataURL("image/jpeg", 1.0);
+        combinedLink.click();
+      }
+
+      function copyImageOneTo(targetIndex) {
+        if (!imageCanvases[0] || !imageCanvases[targetIndex]) return;
+
+        const destCtx = imageCanvases[targetIndex].getContext("2d");
+        destCtx.clearRect(0, 0, imageWidth, imageHeight);
+        destCtx.drawImage(imageCanvases[0], 0, 0);
+
+        drawAllImages();
+      }
+
+      function copyFromPreviousImage(targetIndex) {
+        if (targetIndex <= 0 || targetIndex >= imageCanvases.length) return;
+
+        const srcCtx = imageCanvases[targetIndex - 1].getContext("2d");
+        const destCtx = imageCanvases[targetIndex].getContext("2d");
+
+        const srcImageData = srcCtx.getImageData(0, 0, imageWidth, imageHeight);
+        const destImageData = destCtx.getImageData(
+          0,
+          0,
+          imageWidth,
+          imageHeight
+        );
+
+        const srcData = srcImageData.data;
+        const destData = destImageData.data;
+
+        for (let i = 0; i < srcData.length; i += 4) {
+          const alpha = srcData[i + 3]; // A
+          if (alpha > 0) {
+            destData[i] = srcData[i]; // R
+            destData[i + 1] = srcData[i + 1]; // G
+            destData[i + 2] = srcData[i + 2]; // B
+            destData[i + 3] = alpha; // A
+          }
+        }
+
+        destCtx.putImageData(destImageData, 0, 0);
+        drawAllImages();
+      }
+    </script>
+  </body>
+</html>

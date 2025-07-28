@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sprite Animation to MP4</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    canvas {
+      border: 2px solid black;
+    }
+  </style>
+</head>
+<body>
+<h3>Upload Sprite Image and Download Animation</h3>
+
+<label>Canvas Width: <input type="number" id="canvas-width" value="130"></label>
+<label>Canvas Height: <input type="number" id="canvas-height" value="170"></label><br><br>
+
+<!-- <label>Total Frames: <input type="number" id="total-frames" value="11"></label>
+<label>First Frame Width: <input type="number" id="first-frame-width" value="155"></label>
+<label>Other Frame Width: <input type="number" id="other-frame-width" value="100"></label> -->
+
+<label>Total Frames: <input type="number" id="total-frames" value="11"></label>
+<label>First Frame Width: <input type="number" id="first-frame-width" value="125"></label>
+<label>Other Frame Width: <input type="number" id="other-frame-width" value="97"></label>
+<label>Spacing: <input type="number" id="spacing" value="0"></label><br><br>
+
+<input type="file" id="image-upload" accept="image/*">
+<button id="start-record">Start Recording</button>
+<!-- <button id="download-video">Download WebM</button> -->
+<br><br>
+
+<canvas id="sprite-canvas"></canvas>
+
+<script>
+  const imageInput = document.getElementById("image-upload");
+  const canvas = document.getElementById("sprite-canvas");
+  const ctx = canvas.getContext("2d");
+
+  let image, animationInterval, currentFrame = 0, offsets = [];
+  let mediaRecorder, recordedChunks = [], filename = "";
+
+  imageInput.addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+    filename = file.name.split(".")[0];
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      image = new Image();
+      image.onload = () => {
+        updateCanvasSize(); // Set canvas size when image is loaded
+        drawFrame(0); // Show first frame
+      };
+      image.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function updateCanvasSize() {
+    canvas.width = parseInt(document.getElementById("canvas-width").value);
+    canvas.height = parseInt(document.getElementById("canvas-height").value);
+  }
+
+  function drawFrame(frameIndex) {
+    if (!image) return;
+
+    const offsetX = offsets[frameIndex];
+    const frameWidth = frameIndex === 0 ? firstFrameWidth : otherFrameWidth;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, offsetX, 0, frameWidth, canvas.height, 0, 0, canvas.width, canvas.height);
+  }
+
+  function calculateOffsets() {
+    offsets = [0];
+    for (let i = 1; i < totalFrames; i++) {
+      const prevOffset = offsets[i - 1];
+      const prevWidth = (i === 1 ? firstFrameWidth : otherFrameWidth);
+      offsets.push(prevOffset + prevWidth + spacing);
+    }
+  }
+
+  document.getElementById("start-record").onclick = () => {
+    if (!image) return alert("Upload a sprite image first.");
+
+    // Read values from input
+    updateCanvasSize();
+    totalFrames = parseInt(document.getElementById("total-frames").value);
+    firstFrameWidth = parseInt(document.getElementById("first-frame-width").value);
+    otherFrameWidth = parseInt(document.getElementById("other-frame-width").value);
+    spacing = parseInt(document.getElementById("spacing").value);
+
+    calculateOffsets();
+
+    // Setup MediaRecorder
+    const stream = canvas.captureStream(10); // 10 fps
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: "video/mp4" });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename + ".mp4";
+      a.click();
+    };
+
+    mediaRecorder.start();
+
+    // Animate and record
+    let frame = 1;
+    animationInterval = setInterval(() => {
+      drawFrame(frame);
+      frame = (frame + 1) % totalFrames;
+      if (frame === 0) {
+        clearInterval(animationInterval);
+        mediaRecorder.stop();
+      }
+    }, 1000); // 10 fps
+  };
+
+  // document.getElementById("download-video").onclick = () => {
+  //   if (recordedChunks.length === 0) {
+  //     alert("No video recorded yet. Click 'Start Recording' first.");
+  //   } else {
+  //     // mediaRecorder.stop(); // Just in case
+  //        const blob = new Blob(recordedChunks, { type: "video/mp4" });
+  //     const url = URL.createObjectURL(blob);
+
+  //     const a = document.createElement("a");
+  //     a.href = url;
+  //     a.download = filename + ".mp4";
+  //     a.click();
+  //   }
+  // };
+
+  // Initial defaults
+  let totalFrames = parseInt(document.getElementById("total-frames").value);
+  let firstFrameWidth = parseInt(document.getElementById("first-frame-width").value);
+  let otherFrameWidth = parseInt(document.getElementById("other-frame-width").value);
+  let spacing = parseInt(document.getElementById("spacing").value);
+</script>
+
+</body>
+</html>

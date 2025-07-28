@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Frame-by-Frame Viewer with Multi Upload & Export</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    #canvas-container {
+      width: 400px;
+      height: 500px;
+      overflow: hidden;
+      border: 2px solid #333;
+      margin-top: 20px;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #controls {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <label><strong>Upload Sprite Images:</strong></label>
+  <input type="file" id="image-upload" accept="image/*" multiple />
+
+  <div id="canvas-container">
+    <canvas id="frame-canvas" width="400" height="500"></canvas>
+  </div>
+
+  <div id="controls">
+    <button id="start-record">Start Batch Record</button>
+  </div>
+
+  <script>
+    const imageInput = document.getElementById("image-upload");
+    const canvas = document.getElementById("frame-canvas");
+    const ctx = canvas.getContext("2d");
+
+    const startBtn = document.getElementById("start-record");
+
+    const firstFrameWidth = 600;
+    const otherFrameWidth = 400;
+    const spacing = 80;
+    const frameRate = 10;
+    const frameDuration = 10000 / frameRate;
+
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    function drawFrame(img, offsets, frameIndex, frameHeight) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const sx = offsets[frameIndex];
+      const sw = frameIndex === 0 ? firstFrameWidth : otherFrameWidth;
+      ctx.drawImage(img, sx, 0, sw, frameHeight, 0, 0, canvas.width, canvas.height);
+    }
+
+    async function processImage(file, index) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        img.onload = function () {
+          const totalImageWidth = img.naturalWidth;
+          const frameHeight = img.naturalHeight;
+          canvas.height = frameHeight;
+
+          const remainingWidth = totalImageWidth - firstFrameWidth;
+          const otherFrames = Math.floor(remainingWidth / (otherFrameWidth + spacing));
+          const totalFrames = 1 + otherFrames;
+
+          const offsets = [0];
+          for (let i = 1; i < totalFrames; i++) {
+            const prevOffset = offsets[i - 1];
+            const prevFrameWidth = i === 1 ? firstFrameWidth : otherFrameWidth;
+            const newOffset = prevOffset + prevFrameWidth + spacing;
+            offsets.push(newOffset);
+          }
+
+          // Skip first frame (start at index 1)
+          let currentFrame = 1;
+          const framesToRecord = totalFrames;
+
+          const stream = canvas.captureStream(frameRate);
+          recordedChunks = [];
+
+          try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: "video/mp4" });
+          } catch (e) {
+            alert("Your browser doesn't support MediaRecorder with mp4. Try Chrome.");
+            return resolve();
+          }
+
+          mediaRecorder.ondataavailable = function (e) {
+            if (e.data.size > 0) recordedChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = function () {
+            const blob = new Blob(recordedChunks, { type: "video/mp4" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${file.name.split(".")[0]}.mp4`;
+            a.click();
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+
+          mediaRecorder.start();
+
+          const interval = setInterval(() => {
+            drawFrame(img, offsets, currentFrame, frameHeight);
+            currentFrame++;
+            if (currentFrame >= totalFrames) currentFrame = 1;
+          }, frameDuration);
+
+          setTimeout(() => {
+            clearInterval(interval);
+            mediaRecorder.stop();
+          }, framesToRecord * frameDuration);
+        };
+      });
+    }
+
+    startBtn.onclick = async () => {
+      const files = Array.from(imageInput.files);
+      if (!files.length) {
+        alert("Please upload at least one image.");
+        return;
+      }
+
+      startBtn.disabled = true;
+
+      for (let i = 0; i < files.length; i++) {
+        await processImage(files[i], i);
+      }
+
+      alert("All recordings finished.");
+      startBtn.disabled = false;
+    };
+  </script>
+</body>
+</html>
